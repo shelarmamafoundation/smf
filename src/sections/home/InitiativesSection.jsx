@@ -1,4 +1,6 @@
+// src/sections/home/InitiativesSection.jsx
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowUpRight, Sparkles, Award, Trophy } from 'lucide-react';
 import { INITIATIVES_DATA } from '../../data/initiativesData';
 
@@ -35,13 +37,12 @@ export default function InitiativesSection({ lang }) {
           {INITIATIVES_DATA.map((item) => {
             const isChirayu = item.isChirayu;
             const isUpcoming = item.isUpcomingSport;
-            
-            // Path ko GitHub Pages / smf base ke anusaar joda
             const cleanPath = item.image.startsWith('/') ? item.image.slice(1) : item.image;
             const fullImageSrc = `${base}${cleanPath}`;
 
             return (
-              <div 
+              <Link 
+                to={`/initiatives/${item.id}`}
                 key={item.id}
                 className={`group relative rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl flex flex-col justify-between ${
                   isChirayu 
@@ -126,7 +127,7 @@ export default function InitiativesSection({ lang }) {
                   </div>
                 </div>
 
-              </div>
+              </Link>
             );
           })}
         </div>
