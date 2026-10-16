@@ -142,7 +142,7 @@ export default function DandiyaRegistration() {
                 <label className="text-[11px] text-stone-300 block mb-1">ग्रुपचे नाव</label>
                 <input
                   type="text"
-                  placeholder="उदा. फ्रेंड्स ग्रुप"
+                  placeholder="उदा. Freinds Group"
                   value={formData.groupName}
                   onChange={(e) => setFormData({ ...formData, groupName: e.target.value })}
                   className="w-full bg-black/40 border border-stone-700 rounded-lg p-2 text-xs focus:border-amber-500 outline-none text-white"
@@ -171,7 +171,7 @@ export default function DandiyaRegistration() {
               name="name"
               autoComplete="name"
               required
-              placeholder="तुमचे नाव"
+              placeholder="Your Name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full bg-black/40 border border-stone-700 rounded-xl p-2.5 text-sm focus:border-amber-500 outline-none text-white"
@@ -200,7 +200,7 @@ export default function DandiyaRegistration() {
             <input
               type="text"
               required
-              placeholder="उदा. विलेपार्ले, अंधेरी"
+              placeholder="उदा. Lower Parel,Worli,Dadar,Prabhadevi"
               value={formData.place}
               onChange={(e) => setFormData({ ...formData, place: e.target.value })}
               className="w-full bg-black/40 border border-stone-700 rounded-xl p-2.5 text-sm focus:border-amber-500 outline-none text-white"
@@ -224,7 +224,7 @@ export default function DandiyaRegistration() {
                 <input
                   type="text"
                   required={hasBand}
-                  placeholder="बँडवरील नंबर टाका (उदा. १०४)"
+                  placeholder="बँडवरील नंबर टाका (उदा. 253915)"
                   value={formData.bandNo}
                   onChange={(e) => setFormData({ ...formData, bandNo: e.target.value })}
                   className="w-full bg-black/40 border border-amber-500/60 rounded-xl p-2.5 text-xs text-amber-200 font-mono outline-none"
