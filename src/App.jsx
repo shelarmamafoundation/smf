@@ -10,12 +10,14 @@ import AdminLayout from './layouts/AdminLayout';
 import HomePage from './pages/public/HomePage';
 import LoginPage from './pages/public/LoginPage';
 import InitiativeDetailPage from './pages/public/InitiativeDetailPage';
+import DandiyaRegistration from './components/common/DandiyaRegistration';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import AdminInitiativesPage from './pages/admin/AdminInitiativesPage';
 import AdminFinancePage from './pages/admin/AdminFinancePage';
+import DandiyaDesk from './components/admin/DandiyaDesk';
 
 // Quick Admin Floating Button
 import AdminFloatingButton from './components/common/AdminFloatingButton';
@@ -32,6 +34,8 @@ export default function App() {
           <Route path="initiatives/:id" element={<InitiativeDetailPage lang="mr" />} />
         </Route>
 
+        <Route path="/dandiya" element={<DandiyaRegistration />} />
+
         {/* 2. Login Route */}
         <Route path="/login" element={<LoginPage />} />
 
@@ -41,6 +45,7 @@ export default function App() {
           <Route path="users" element={<UserManagementPage />} />
           <Route path="initiatives" element={<AdminInitiativesPage />} />
           <Route path="finance" element={<AdminFinancePage />} />
+          <Route path="dandiya-desk" element={<DandiyaDesk />} />
         </Route>
 
         {/* 4. Fallback */}

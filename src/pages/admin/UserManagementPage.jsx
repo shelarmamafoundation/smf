@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, UserPlus, ShieldAlert, ShieldCheck, 
-  Trash2, Edit3, Mail, Phone, X, CheckCircle, Loader2, RefreshCw
+  Trash2, Edit3, Mail, Phone, X, Loader2, RefreshCw, Ticket
 } from 'lucide-react';
-import { userService, SYSTEM_MODULES } from '../../services/userService';
+import { userService } from '../../services/userService';
 import { INITIATIVES_DATA } from '../../data/initiativesData';
 
 export default function UserManagementPage() {
@@ -23,6 +23,7 @@ export default function UserManagementPage() {
     permissions: {
       events: { canView: true, canEdit: false, scope: [] },
       finance: { canView: false, canEdit: false, scope: [] },
+      dandiyaDesk: { canAccess: false },
       userManagement: { canView: false, canEdit: false }
     }
   };
@@ -37,7 +38,7 @@ export default function UserManagementPage() {
     setLoading(true);
     try {
       const data = await userService.getUsers(force);
-      setUsers(data);
+      setUsers(data || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -59,7 +60,11 @@ export default function UserManagementPage() {
       email: user.email,
       phone: user.phone || '',
       isSuperAdmin: Boolean(user.isSuperAdmin),
-      permissions: user.permissions || defaultFormData.permissions
+      permissions: {
+        ...defaultFormData.permissions,
+        ...(user.permissions || {}),
+        dandiyaDesk: user.permissions?.dandiyaDesk || { canAccess: false }
+      }
     });
     setErrorMsg('');
     setShowModal(true);
@@ -115,7 +120,7 @@ export default function UserManagementPage() {
         await userService.createUser(formData);
       }
       setShowModal(false);
-      await loadUsers(false); // कॅशमधून लगेच रिफ्रेश
+      await loadUsers(false);
     } catch (err) {
       setErrorMsg(err.message || 'डेटाबेसमध्ये सेव्ह करताना त्रुटी आली.');
     } finally {
@@ -135,152 +140,134 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 font-sans">
+    <div className="p-2.5 sm:p-5 max-w-7xl mx-auto space-y-3 font-sans">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
+      {/* 1. Ultra-Compact Header */}
+      <div className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <div className="flex items-center gap-2 text-heritage-crimson text-xs font-bold uppercase tracking-wider mb-1">
-            <Users className="w-4 h-4" />
-            <span>परवानग्या व अधिकार नियंत्रण</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-heritage-burgundy">
-            युजर व ॲक्सेस व्यवस्थापन
+          <h1 className="text-sm sm:text-base font-black text-slate-800 flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-amber-600" />
+            <span>युजर व ॲक्सेस व्यवस्थापन</span>
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            प्रत्येक कार्यकर्त्याला हवे ते मॉड्युल (Events, Finance) आणि ठरावीक अधिकार (View / Edit) द्या.
-          </p>
+          <p className="text-[11px] text-slate-400">कार्यकर्त्यांच्या परवानग्या व मॉड्युल अधिकार</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Read वाचवणारे मॅन्युअल सिंक बटण */}
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => loadUsers(true)}
-            title="डेटाबेसमधून ताजी माहिती आणा"
-            className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 text-gray-600 transition"
+            title="रिफ्रेश करा"
+            className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 active:scale-95 transition"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-heritage-burgundy' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-600' : ''}`} />
           </button>
 
           <button 
             onClick={handleOpenAdd}
-            className="inline-flex items-center justify-center gap-2 bg-heritage-burgundy hover:bg-heritage-crimson text-white font-bold px-5 py-2.5 rounded-xl text-sm shadow-md transition"
+            className="inline-flex items-center gap-1.5 bg-[#4A0E17] hover:bg-[#681420] text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow-xs transition active:scale-95"
           >
-            <UserPlus className="w-4 h-4" />
-            <span>नवीन प्रतिनिधी जोडा</span>
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>नवीन प्रतिनिधी</span>
           </button>
         </div>
       </div>
 
-      {/* Users Grid */}
+      {/* 2. Compact Users Grid */}
       {loading && users.length === 0 ? (
-        <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
-          <Loader2 className="w-5 h-5 animate-spin text-heritage-burgundy" />
-          <span>प्रतिनिधींची माहिती लोड होत आहे...</span>
+        <div className="flex items-center justify-center py-12 text-slate-400 gap-2 bg-white rounded-2xl border border-slate-200">
+          <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+          <span className="text-xs">माहिती लोड होत आहे...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {users.map((user) => (
             <div 
               key={user.id}
-              className={`bg-white border rounded-3xl p-6 shadow-sm flex flex-col justify-between ${
-                user.isSuperAdmin ? 'border-red-300 bg-red-50/20 ring-1 ring-red-200' : 'border-gray-200'
+              className={`bg-white border rounded-2xl p-3 shadow-xs flex flex-col justify-between transition hover:border-slate-300 ${
+                user.isSuperAdmin ? 'border-amber-300/80 bg-amber-50/15' : 'border-slate-200'
               }`}
             >
               <div>
-                <div className="flex items-start justify-between gap-2 mb-4">
-                  <div>
-                    <h3 className="font-extrabold text-lg text-gray-900">{user.name}</h3>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 mt-1">
-                      <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span className="truncate max-w-[190px]">{user.email}</span>
+                {/* User Info Header */}
+                <div className="flex items-start justify-between gap-2 mb-2 pb-2 border-b border-slate-100">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-xs text-slate-900 truncate">{user.name}</h3>
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 font-mono">
+                      <Mail className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                      <span className="truncate max-w-[170px]">{user.email}</span>
                     </div>
                     {user.phone && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                        <Phone className="w-2.5 h-2.5 text-slate-400 shrink-0" />
                         <span>{user.phone}</span>
                       </div>
                     )}
                   </div>
+
                   {user.isSuperAdmin ? (
-                    <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-                      <ShieldAlert className="w-3 h-3" /> सुपर ॲडमिन
+                    <span className="bg-red-600 text-white px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
+                      <ShieldAlert className="w-2.5 h-2.5" /> सुपर ॲडमिन
                     </span>
                   ) : (
-                    <span className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-[11px] font-bold">
-                      कस्टम परवानग्या
+                    <span className="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md text-[9px] font-bold shrink-0">
+                      कस्टम रोल
                     </span>
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-gray-100 space-y-2.5">
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
-                    दिलेले मॉड्युल्स व अधिकार:
-                  </span>
-
+                {/* Permissions Snapshot (Ultra Thin Rows) */}
+                <div className="space-y-1">
                   {user.isSuperAdmin ? (
-                    <div className="text-xs bg-emerald-50 text-emerald-800 p-2.5 rounded-xl border border-emerald-200 font-semibold flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>सर्व मॉड्युल्स, इव्हेंट्स व जमा-खर्चाचे पूर्ण अधिकार</span>
+                    <div className="text-[10px] bg-emerald-50 text-emerald-800 p-1.5 rounded-lg border border-emerald-200 font-medium flex items-center gap-1.5">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                      <span>सर्व मॉड्युल्सचे अमर्याद अधिकार</span>
                     </div>
                   ) : (
-                    <div className="space-y-2 text-xs">
-                      {/* Events Perm */}
-                      <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200">
-                        <div className="flex items-center justify-between font-bold text-gray-800">
-                          <span>इव्हेंट्स व फोटो</span>
-                          <span className="text-[10px] text-gray-500">
-                            {user.permissions?.events?.canEdit ? 'Edit + View' : user.permissions?.events?.canView ? 'फक्त View' : 'अधिकार नाही'}
-                          </span>
-                        </div>
-                        {user.permissions?.events?.scope && user.permissions.events.scope !== 'all' && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {user.permissions.events.scope.map(sId => (
-                              <span key={sId} className="text-[10px] bg-white border border-gray-300 px-1.5 py-0.5 rounded text-gray-600">
-                                {INITIATIVES_DATA.find(i => i.id === sId)?.titleMr || sId}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                    <div className="space-y-1 text-[10px]">
+                      {/* Events */}
+                      <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                        <span className="text-slate-600">इव्हेंट्स:</span>
+                        <span className="font-semibold text-slate-800">
+                          {user.permissions?.events?.canEdit ? 'Edit + View' : user.permissions?.events?.canView ? 'फक्त View' : '—'}
+                        </span>
                       </div>
 
-                      {/* Finance Perm */}
-                      <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200">
-                        <div className="flex items-center justify-between font-bold text-gray-800">
-                          <span>जमा-खर्च (हिशोब)</span>
-                          <span className="text-[10px] text-gray-500">
-                            {user.permissions?.finance?.canEdit ? 'Edit + View' : user.permissions?.finance?.canView ? 'फक्त View' : 'अधिकार नाही'}
-                          </span>
-                        </div>
-                        {user.permissions?.finance?.scope && user.permissions.finance.scope !== 'all' && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {user.permissions.finance.scope.map(sId => (
-                              <span key={sId} className="text-[10px] bg-white border border-gray-300 px-1.5 py-0.5 rounded text-gray-600">
-                                {INITIATIVES_DATA.find(i => i.id === sId)?.titleMr || sId}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                      {/* Finance */}
+                      <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                        <span className="text-slate-600">जमा-खर्च:</span>
+                        <span className="font-semibold text-slate-800">
+                          {user.permissions?.finance?.canEdit ? 'Edit + View' : user.permissions?.finance?.canView ? 'फक्त View' : '—'}
+                        </span>
+                      </div>
+
+                      {/* Dandiya Desk */}
+                      <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-amber-50/60 border border-amber-200/60 text-amber-900">
+                        <span className="flex items-center gap-1">
+                          <Ticket className="w-3 h-3 text-amber-600" />
+                          <span>दांडिया डेस्क:</span>
+                        </span>
+                        <span className={`font-bold ${user.permissions?.dandiyaDesk?.canAccess ? 'text-emerald-700' : 'text-slate-400'}`}>
+                          {user.permissions?.dandiyaDesk?.canAccess ? 'मंजूर ✓' : '—'}
+                        </span>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 flex items-center justify-end gap-2 border-t border-gray-100">
+              {/* Action Buttons */}
+              <div className="pt-2 mt-2 flex items-center justify-end gap-1.5 border-t border-slate-100">
                 <button 
                   onClick={() => handleOpenEdit(user)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-gray-700 hover:text-heritage-burgundy bg-gray-100 rounded-lg transition"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 rounded-lg transition"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>अधिकार बदला</span>
+                  <Edit3 className="w-3 h-3" />
+                  <span>बदला</span>
                 </button>
                 <button 
                   onClick={() => handleDelete(user.id)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>डिलीट</span>
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </div>
@@ -288,111 +275,136 @@ export default function UserManagementPage() {
         </div>
       )}
 
-      {/* Modal - Flexible Permission Builder */}
+      {/* 3. Modal - Ultra-Compact & Tight Builder */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-gray-200 space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-5 shadow-2xl border border-slate-200 space-y-3.5 max-h-[92vh] overflow-y-auto">
             
-            <div className="flex items-center justify-between border-b pb-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b pb-2.5">
               <div>
-                <h2 className="text-xl font-black text-heritage-burgundy">
+                <h2 className="text-base font-black text-slate-800">
                   {editingUserId ? 'प्रतिनिधीचे अधिकार बदला' : 'नवीन प्रतिनिधी जोडा'}
                 </h2>
-                <p className="text-xs text-gray-500">माहिती थेट Firestore डेटाबेसमध्ये सेव्ह होईल</p>
+                <p className="text-[10px] text-slate-400">माहिती थेट Firestore डेटाबेसमध्ये सेव्ह होईल</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-black">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-black p-1">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
+              <div className="p-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
                 {errorMsg}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               
-              <div className="grid sm:grid-cols-2 gap-4">
+              {/* Name & Email Row */}
+              <div className="grid sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">नाव</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">नाव *</label>
                   <input 
                     type="text" 
                     required
                     placeholder="उदा. विशाल मगर"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-heritage-burgundy outline-none"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs outline-none focus:border-amber-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Google Email (Login)</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Google Email (Login) *</label>
                   <input 
                     type="email" 
                     required
                     placeholder="vishal@gmail.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-heritage-burgundy outline-none"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono outline-none focus:border-amber-600"
                   />
                 </div>
               </div>
 
-              {/* Super Admin Checkbox */}
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+              {/* Super Admin Checkbox Box */}
+              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-bold text-amber-900">सुपर ॲडमिन (Super Admin)</h4>
-                  <p className="text-[11px] text-amber-700">सर्व मॉड्युल्स, इव्हेंट्स व जमा-खर्चाचे अमर्याद अधिकार</p>
+                  <h4 className="text-xs font-bold text-amber-900">सुपर ॲडमिन (Super Admin)</h4>
+                  <p className="text-[10px] text-amber-700">सर्व मॉड्युल्सचे अमर्याद अधिकार मिळतील</p>
                 </div>
                 <input 
                   type="checkbox"
                   checked={formData.isSuperAdmin}
                   onChange={(e) => setFormData({ ...formData, isSuperAdmin: e.target.checked })}
-                  className="w-5 h-5 rounded text-amber-600 focus:ring-0"
+                  className="w-4 h-4 rounded text-amber-600 focus:ring-0"
                 />
               </div>
 
               {/* Custom Modular Permissions */}
               {!formData.isSuperAdmin && (
-                <div className="space-y-4 pt-2">
-                  <h3 className="text-xs font-extrabold uppercase text-gray-500 tracking-wider">
-                    मॉड्युल व अधिकार वाटप (Permissions Matrix)
+                <div className="space-y-2 pt-1">
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    मॉड्यूल व अधिकार वाटप (Permissions)
                   </h3>
 
-                  {/* 1. Events Module */}
-                  <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-3">
+                  {/* 1. दांडिया डेस्क Module (First & Highlighted) */}
+                  <div className="p-2.5 rounded-xl border border-amber-300 bg-amber-50/50 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-xs text-amber-950 flex items-center gap-1.5">
+                        <Ticket className="w-3.5 h-3.5 text-amber-600" />
+                        <span>दांडिया रिस्टबँड डेस्क</span>
+                      </span>
+                      <p className="text-[9px] text-amber-800">गेटवर टोकन शोधणे व बँड वाटप</p>
+                    </div>
+                    <label className="flex items-center gap-1 text-[11px] font-bold text-amber-900 cursor-pointer bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.permissions.dandiyaDesk?.canAccess || false}
+                        onChange={(e) => handlePermChange('dandiyaDesk', 'canAccess', e.target.checked)}
+                        className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-0"
+                      />
+                      <span>प्रवेश द्या</span>
+                    </label>
+                  </div>
+
+                  {/* 2. Events Module */}
+                  <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-gray-900">इव्हेंट्स व फोटो गॅलरी</span>
-                      <div className="flex items-center gap-4 text-xs font-semibold">
+                      <span className="font-bold text-xs text-slate-800">इव्हेंट्स व फोटो गॅलरी</span>
+                      <div className="flex items-center gap-3 text-[11px] font-semibold">
                         <label className="flex items-center gap-1 cursor-pointer">
                           <input 
                             type="checkbox" 
                             checked={formData.permissions.events.canView}
                             onChange={(e) => handlePermChange('events', 'canView', e.target.checked)}
+                            className="w-3.5 h-3.5"
                           />
-                          <span>View (पाहणे)</span>
+                          <span>View</span>
                         </label>
                         <label className="flex items-center gap-1 cursor-pointer">
                           <input 
                             type="checkbox" 
                             checked={formData.permissions.events.canEdit}
                             onChange={(e) => handlePermChange('events', 'canEdit', e.target.checked)}
+                            className="w-3.5 h-3.5"
                           />
-                          <span>Edit (बदलणे)</span>
+                          <span>Edit</span>
                         </label>
                       </div>
                     </div>
 
                     {(formData.permissions.events.canView || formData.permissions.events.canEdit) && (
-                      <div>
-                        <span className="text-[11px] font-bold text-gray-500 block mb-1.5">कोणत्या इव्हेंटचे अधिकार?</span>
-                        <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-white rounded-xl border">
+                      <div className="pt-1">
+                        <span className="text-[9px] font-bold text-slate-500 block mb-1">कोणत्या इव्हेंटचे अधिकार?</span>
+                        <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto p-1.5 bg-white rounded-lg border border-slate-200 text-[10px]">
                           {INITIATIVES_DATA.map((item) => (
-                            <label key={item.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                            <label key={item.id} className="flex items-center gap-1 cursor-pointer truncate">
                               <input 
                                 type="checkbox"
                                 checked={formData.permissions.events.scope?.includes(item.id)}
                                 onChange={() => handleScopeToggle('events', item.id)}
+                                className="w-3 h-3"
                               />
                               <span className="truncate">{item.titleMr}</span>
                             </label>
@@ -402,40 +414,43 @@ export default function UserManagementPage() {
                     )}
                   </div>
 
-                  {/* 2. Finance Module */}
-                  <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-3">
+                  {/* 3. Finance Module */}
+                  <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-gray-900">जमा-खर्च (Income & Expenses)</span>
-                      <div className="flex items-center gap-4 text-xs font-semibold">
+                      <span className="font-bold text-xs text-slate-800">जमा-खर्च (हिशोब)</span>
+                      <div className="flex items-center gap-3 text-[11px] font-semibold">
                         <label className="flex items-center gap-1 cursor-pointer">
                           <input 
                             type="checkbox" 
                             checked={formData.permissions.finance.canView}
                             onChange={(e) => handlePermChange('finance', 'canView', e.target.checked)}
+                            className="w-3.5 h-3.5"
                           />
-                          <span>View (पाहणे)</span>
+                          <span>View</span>
                         </label>
                         <label className="flex items-center gap-1 cursor-pointer">
                           <input 
                             type="checkbox" 
                             checked={formData.permissions.finance.canEdit}
                             onChange={(e) => handlePermChange('finance', 'canEdit', e.target.checked)}
+                            className="w-3.5 h-3.5"
                           />
-                          <span>Edit (नोंदी करणे)</span>
+                          <span>Edit</span>
                         </label>
                       </div>
                     </div>
 
                     {(formData.permissions.finance.canView || formData.permissions.finance.canEdit) && (
-                      <div>
-                        <span className="text-[11px] font-bold text-gray-500 block mb-1.5">कोणत्या इव्हेंटच्या जमाखर्चाचे अधिकार?</span>
-                        <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-2 bg-white rounded-xl border">
+                      <div className="pt-1">
+                        <span className="text-[9px] font-bold text-slate-500 block mb-1">कोणत्या इव्हेंटचे अधिकार?</span>
+                        <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto p-1.5 bg-white rounded-lg border border-slate-200 text-[10px]">
                           {INITIATIVES_DATA.map((item) => (
-                            <label key={item.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                            <label key={item.id} className="flex items-center gap-1 cursor-pointer truncate">
                               <input 
                                 type="checkbox"
                                 checked={formData.permissions.finance.scope?.includes(item.id)}
                                 onChange={() => handleScopeToggle('finance', item.id)}
+                                className="w-3 h-3"
                               />
                               <span className="truncate">{item.titleMr}</span>
                             </label>
@@ -448,20 +463,21 @@ export default function UserManagementPage() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4 border-t">
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-2.5 border-t">
                 <button 
                   type="button" 
-                  onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 rounded-xl border text-sm font-semibold text-gray-600"
+                  onClick={() => setShowModal(false)} 
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600"
                 >
                   रद्द करा
                 </button>
                 <button 
                   type="submit" 
-                  disabled={submitting}
-                  className="px-6 py-2.5 rounded-xl bg-heritage-burgundy text-white text-sm font-bold shadow-md hover:bg-heritage-crimson transition flex items-center gap-2 disabled:opacity-60"
+                  disabled={submitting} 
+                  className="px-4 py-1.5 rounded-xl bg-[#4A0E17] hover:bg-[#681420] text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{editingUserId ? 'बदल सेव्ह करा' : 'प्रतिनिधी जोडा'}</span>
                 </button>
               </div>
