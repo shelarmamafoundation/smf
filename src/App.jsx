@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout';
@@ -24,9 +24,8 @@ import AdminFloatingButton from './components/common/AdminFloatingButton';
 
 export default function App() {
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      
-            <Routes>
+    <HashRouter>
+      <Routes>
         
         {/* 1. Public Website Routes */}
         <Route path="/" element={<PublicLayout />}>
@@ -52,6 +51,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

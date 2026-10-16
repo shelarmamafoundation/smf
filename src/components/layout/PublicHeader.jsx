@@ -1,7 +1,7 @@
 // src/components/layout/PublicHeader.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Globe, ArrowUpRight, Sparkles, KeyRound, LayoutDashboard } from 'lucide-react';
+import { Globe, ArrowUpRight, Sparkles, KeyRound, LayoutDashboard, Ticket } from 'lucide-react';
 import { auth } from '../../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -17,7 +17,7 @@ export default function PublicHeader({ lang, setLang }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Firebase auth state check karne (Login status check)
+  // Firebase auth state check करणे (Login status check)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -142,31 +142,33 @@ export default function PublicHeader({ lang, setLang }) {
         </nav>
 
         {/* Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button 
             type="button"
             onClick={() => setLang(l => l === 'mr' ? 'en' : 'mr')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-heritage-goldLight border border-heritage-gold/30 px-3.5 py-1.5 rounded-full hover:bg-heritage-gold/10 transition cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-semibold text-heritage-goldLight border border-heritage-gold/30 px-3 py-1.5 rounded-full hover:bg-heritage-gold/10 transition cursor-pointer"
           >
             <Globe className="w-3.5 h-3.5 text-heritage-gold" />
-            <span>{lang === 'mr' ? 'English' : 'मराठी'}</span>
+            <span className="hidden sm:inline">{lang === 'mr' ? 'English' : 'मराठी'}</span>
+            <span className="sm:hidden">{lang === 'mr' ? 'EN' : 'म'}</span>
           </button>
 
-          <button 
-            type="button"
-            onClick={(e) => handleNav(e, 'events')}
-            className="hidden sm:inline-flex items-center gap-1.5 bg-gradient-to-r from-heritage-gold to-heritage-goldLight text-heritage-burgundy font-bold px-4 py-2 rounded-full text-xs shadow-lg shadow-heritage-gold/20 hover:scale-105 transition active:scale-95 cursor-pointer"
+          {/* दांडिया पास / सहभागी व्हा बटण (Direct /dandiya Link) */}
+          <Link
+            to="/dandiya"
+            className="inline-flex items-center gap-1.5 bg-gradient-to-r from-heritage-gold to-heritage-goldLight text-heritage-burgundy font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs shadow-lg shadow-heritage-gold/20 hover:scale-105 transition active:scale-95 cursor-pointer"
           >
-            <span>{lang === 'mr' ? 'सहभागी व्हा' : 'Get Involved'}</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
+            <Ticket className="w-3.5 h-3.5 text-heritage-burgundy shrink-0" />
+            <span>{lang === 'mr' ? 'सहभागी व्हा' : 'Get Pass'}</span>
+            <ArrowUpRight className="w-3.5 h-3.5 hidden sm:inline" />
+          </Link>
 
           {/* Smart Admin / Login Icon */}
           <button 
             type="button"
             onClick={handleAdminClick}
             title={currentUser ? "व्यवस्थापन कक्षात जा (Admin Dashboard)" : "कार्यकर्ता कक्ष / Admin Login"}
-            className="relative w-8 h-8 rounded-full border border-heritage-gold/40 bg-white/5 hover:bg-heritage-gold/20 flex items-center justify-center text-heritage-goldLight transition active:scale-95 cursor-pointer"
+            className="relative w-8 h-8 rounded-full border border-heritage-gold/40 bg-white/5 hover:bg-heritage-gold/20 flex items-center justify-center text-heritage-goldLight transition active:scale-95 cursor-pointer shrink-0"
           >
             {currentUser ? (
               <>

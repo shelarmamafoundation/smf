@@ -39,7 +39,7 @@ export default function DandiyaDesk() {
   const handleInlineAssign = async (item) => {
     const inputVal = bandInputs[item.tokenId]?.trim();
     if (!inputVal) {
-      alert('Krupaya wristband number taka!');
+      alert('कृपया रिस्टबँड नंबर टाका!');
       return;
     }
 
@@ -65,16 +65,16 @@ export default function DandiyaDesk() {
           )
         );
       } else {
-        alert(data.message || 'Truti aali!');
+        alert(data.message || 'त्रुटी आली!');
       }
     } catch (err) {
-      alert('Network Error: ' + err.message);
+      alert('नेटवर्क एरर: ' + err.message);
     } finally {
       setAssigningRow(null);
     }
   };
 
-  // Filter Logic
+  // अचूक फिल्टर लॉजिक (इंग्रजी + मराठी देवनागरी दोन्ही सपोर्ट)
   const filteredList = registrations.filter((item) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
@@ -90,15 +90,15 @@ export default function DandiyaDesk() {
         ? item.status !== 'Issued'
         : item.status === 'Issued';
 
-    const rawType = (item.entryType || '').toLowerCase();
+    const rawType = (item.entryType || '').toString().toLowerCase();
     const matchesType =
       typeFilter === 'all'
         ? true
         : typeFilter === 'single'
-        ? rawType.includes('single')
+        ? (rawType.includes('single') || rawType.includes('एक'))
         : typeFilter === 'dual'
-        ? (rawType.includes('dual') || rawType.includes('couple') || rawType.includes('2'))
-        : rawType.includes('group');
+        ? (rawType.includes('dual') || rawType.includes('couple') || rawType.includes('२') || rawType.includes('2'))
+        : (rawType.includes('group') || rawType.includes('ग्रुप') || rawType.includes('grp'));
 
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -110,7 +110,7 @@ export default function DandiyaDesk() {
   return (
     <div className="p-2.5 max-w-2xl mx-auto space-y-2.5">
       
-      {/* 1. Ultra-Compact Header */}
+      {/* 1. Header */}
       <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Ticket className="w-4 h-4 text-amber-500" />
@@ -127,7 +127,7 @@ export default function DandiyaDesk() {
         </button>
       </div>
 
-      {/* 2. Micro Status Bar (Compact Pills) */}
+      {/* 2. Micro Status Bar */}
       <div className="grid grid-cols-3 gap-1.5">
         <button
           onClick={() => setStatusFilter('all')}
@@ -166,7 +166,7 @@ export default function DandiyaDesk() {
         </button>
       </div>
 
-      {/* 3. Entry Type Filters (Single / Couple / Group quick pills) */}
+      {/* 3. Entry Type Filters */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
         {[
           { id: 'all', label: 'सर्व' },
@@ -188,7 +188,7 @@ export default function DandiyaDesk() {
         ))}
       </div>
 
-      {/* 4. Compact Search Input */}
+      {/* 4. Search Input */}
       <div className="relative">
         <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
@@ -208,7 +208,7 @@ export default function DandiyaDesk() {
         )}
       </div>
 
-      {/* 5. Ultra-Compact List (Multiple items fit on one mobile screen) */}
+      {/* 5. Compact Cards List */}
       {loading ? (
         <div className="text-center py-8 bg-white rounded-xl border border-slate-200">
           <RefreshCw className="w-5 h-5 text-amber-500 animate-spin mx-auto mb-1.5" />
@@ -231,7 +231,6 @@ export default function DandiyaDesk() {
                   isIssued ? 'border-emerald-200 bg-emerald-50/15' : 'border-amber-200 hover:border-amber-400'
                 }`}
               >
-                {/* Header Row: Token + Type + Status Badge */}
                 <div className="flex items-center justify-between gap-1 mb-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="font-mono font-black text-xs text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 shrink-0">
@@ -256,7 +255,6 @@ export default function DandiyaDesk() {
                   )}
                 </div>
 
-                {/* Sub details: Phone & Place */}
                 <div className="flex items-center gap-3 text-[10px] text-slate-500 mb-2 font-medium">
                   <span className="flex items-center gap-1">
                     <Phone className="w-2.5 h-2.5 text-slate-400" />
@@ -270,7 +268,6 @@ export default function DandiyaDesk() {
                   </span>
                 </div>
 
-                {/* Inline Action Row */}
                 <div className="flex items-center gap-1.5">
                   <input
                     type="text"
