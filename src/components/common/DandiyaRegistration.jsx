@@ -3,6 +3,15 @@ import React, { useState } from 'react';
 export default function DandiyaRegistration() {
   const SCRIPT_URL = import.meta.env.VITE_DANDIYA_SCRIPT_URL;
 
+  // 16 Oct expired, 17-19 open (ekach row sathi ultra-compact chips)
+  const DATES = [
+    { key: '16-Oct', label: '16 Oct', active: false },
+    { key: '17-Oct', label: '17 Oct (आज)', active: true },
+    { key: '18-Oct', label: '18 Oct', active: true },
+    { key: '19-Oct', label: '19 Oct', active: true },
+  ];
+
+  const [selectedDate, setSelectedDate] = useState('17-Oct');
   const [entryType, setEntryType] = useState('single');
   const [formData, setFormData] = useState({
     name: '',
@@ -22,6 +31,7 @@ export default function DandiyaRegistration() {
 
     const payload = {
       action: 'register',
+      bookingDate: selectedDate, // <-- Tarikh add keli
       entryType: entryType === 'group' ? `ग्रुप (${formData.totalCount})` : entryType,
       name: formData.name,
       mobile: formData.mobile,
@@ -37,7 +47,7 @@ export default function DandiyaRegistration() {
       });
       const data = await res.json();
       if (data.success) {
-        setTokenResult(data);
+        setTokenResult({ ...data, bookingDate: selectedDate });
       } else {
         alert('नोंदणी करताना त्रुटी आली: ' + (data.error || 'सर्व्हर एरर'));
       }
@@ -59,7 +69,7 @@ export default function DandiyaRegistration() {
           <h2 className="text-xl font-bold text-amber-200">नोंदणी यशस्वी!</h2>
           <p className="text-xs text-stone-400 mt-1">शेलारमामा फाऊंडेशन दांडिया २०२६</p>
 
-          <div className="my-6 bg-black/50 border border-amber-500/40 rounded-2xl p-5">
+          <div className="my-5 bg-black/50 border border-amber-500/40 rounded-2xl p-4">
             <span className="text-[11px] font-semibold tracking-wider text-amber-400 uppercase block mb-1">
               तुमचा टोकन क्रमांक
             </span>
@@ -68,12 +78,13 @@ export default function DandiyaRegistration() {
             </span>
           </div>
 
-          <div className="text-sm text-stone-300 space-y-1 mb-6 text-left bg-black/20 p-3 rounded-xl border border-stone-800">
+          <div className="text-xs text-stone-300 space-y-1.5 mb-5 text-left bg-black/20 p-3 rounded-xl border border-stone-800">
+            <p><span className="text-stone-400">तारीख:</span> <strong className="text-amber-300 font-mono">{tokenResult.bookingDate}</strong></p>
             <p><span className="text-stone-400">नाव:</span> <strong className="text-white">{tokenResult.name}</strong></p>
             {hasBand ? (
-              <p className="text-emerald-400 text-xs mt-2 font-medium">तुमचा रिस्टबँड आधीच जोडला गेला आहे.</p>
+              <p className="text-emerald-400 text-xs mt-1.5 font-medium">तुमचा रिस्टबँड आधीच जोडला गेला आहे.</p>
             ) : (
-              <p className="text-amber-300 text-xs mt-2 font-medium">
+              <p className="text-amber-300 text-xs mt-1.5 font-medium">
                 👉 हा टोकन क्रमांक काउंटरवर दाखवून आपला रिस्टबँड मिळवा.
               </p>
             )}
@@ -85,7 +96,7 @@ export default function DandiyaRegistration() {
               setFormData({ name: '', mobile: '', place: '', groupName: '', totalCount: '1', bandNo: '' });
               setHasBand(false);
             }}
-            className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl transition text-sm active:scale-95"
+            className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold rounded-xl transition text-sm active:scale-95"
           >
             नवीन नोंदणी करा
           </button>
@@ -94,26 +105,49 @@ export default function DandiyaRegistration() {
     );
   }
 
-  // मोबाईलसाठी अनुकूल फॉर्म
   return (
-    <div className="min-h-[100dvh] bg-[#1a0507] text-stone-100 flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-sm bg-[#2b080c] border border-amber-600/30 rounded-3xl p-5 shadow-2xl">
+    <div className="min-h-[100dvh] bg-[#1a0507] text-stone-100 flex flex-col justify-center items-center p-3 sm:p-4">
+      <div className="w-full max-w-sm bg-[#2b080c] border border-amber-600/30 rounded-3xl p-4 sm:p-5 shadow-2xl">
         
         {/* हेडर */}
-        <div className="text-center mb-5">
-          <span className="text-[10px] tracking-widest text-amber-400 uppercase font-semibold">
+        <div className="text-center mb-3.5">
+          <span className="text-[9px] tracking-widest text-amber-400 uppercase font-semibold">
             शेलारमामा फाऊंडेशन
           </span>
-          <h1 className="text-2xl font-bold text-amber-200 mt-0.5">दांडिया पास २०२६</h1>
-          <p className="text-[11px] text-stone-400">१६ ऑक्टोबर ते १९ ऑक्टोबर | जलद नोंदणी</p>
+          <h1 className="text-xl font-bold text-amber-200 mt-0.5">दांडिया पास २०२६</h1>
+          <p className="text-[10px] text-stone-400">१६ ते १९ ऑक्टोबर | जलद नोंदणी</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-3">
           
-          {/* प्रवेश प्रकार */}
+          {/* १. तारीख निवड (Single Compact Row) */}
           <div>
-            <label className="text-xs text-stone-300 font-medium block mb-1.5">प्रवेश प्रकार</label>
-            <div className="grid grid-cols-3 gap-2">
+            <label className="text-[11px] text-stone-300 font-medium block mb-1">तारीख निवडा (Date)</label>
+            <div className="grid grid-cols-4 gap-1">
+              {DATES.map((d) => (
+                <button
+                  type="button"
+                  key={d.key}
+                  disabled={!d.active}
+                  onClick={() => setSelectedDate(d.key)}
+                  className={`py-1.5 text-[10px] font-bold rounded-lg border transition text-center truncate ${
+                    !d.active
+                      ? 'opacity-30 bg-black/40 border-stone-800 text-stone-500 line-through cursor-not-allowed'
+                      : selectedDate === d.key
+                      ? 'bg-amber-500 text-stone-950 border-amber-400 font-black shadow-xs'
+                      : 'bg-black/30 border-stone-800 text-stone-300 hover:border-stone-600'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* २. प्रवेश प्रकार (Single Row) */}
+          <div>
+            <label className="text-[11px] text-stone-300 font-medium block mb-1">प्रवेश प्रकार</label>
+            <div className="grid grid-cols-3 gap-1.5">
               {[
                 { id: 'single', label: 'Single' },
                 { id: 'dual', label: 'Couple / २' },
@@ -123,9 +157,9 @@ export default function DandiyaRegistration() {
                   type="button"
                   key={t.id}
                   onClick={() => setEntryType(t.id)}
-                  className={`py-2 text-xs font-bold rounded-xl border transition ${
+                  className={`py-1.5 text-[11px] font-bold rounded-xl border transition ${
                     entryType === t.id
-                      ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-md'
+                      ? 'bg-amber-500 text-stone-950 border-amber-400 shadow-xs'
                       : 'bg-black/30 border-stone-800 text-stone-400 hover:border-amber-600/50'
                   }`}
                 >
@@ -137,25 +171,25 @@ export default function DandiyaRegistration() {
 
           {/* ग्रुप असल्यास फील्ड्स */}
           {entryType === 'group' && (
-            <div className="grid grid-cols-2 gap-2 bg-black/20 p-2.5 rounded-xl border border-stone-800">
+            <div className="grid grid-cols-2 gap-2 bg-black/20 p-2 rounded-xl border border-stone-800">
               <div>
-                <label className="text-[11px] text-stone-300 block mb-1">ग्रुपचे नाव</label>
+                <label className="text-[10px] text-stone-300 block mb-0.5">ग्रुपचे नाव</label>
                 <input
                   type="text"
-                  placeholder="उदा. Freinds Group"
+                  placeholder="Friends Group"
                   value={formData.groupName}
                   onChange={(e) => setFormData({ ...formData, groupName: e.target.value })}
-                  className="w-full bg-black/40 border border-stone-700 rounded-lg p-2 text-xs focus:border-amber-500 outline-none text-white"
+                  className="w-full bg-black/40 border border-stone-700 rounded-lg p-1.5 text-xs focus:border-amber-500 outline-none text-white"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-stone-300 block mb-1">एकूण व्यक्ती</label>
+                <label className="text-[10px] text-stone-300 block mb-0.5">एकूण व्यक्ती</label>
                 <input
                   type="number"
                   min="2"
                   value={formData.totalCount}
                   onChange={(e) => setFormData({ ...formData, totalCount: e.target.value })}
-                  className="w-full bg-black/40 border border-stone-700 rounded-lg p-2 text-xs focus:border-amber-500 outline-none text-white font-mono"
+                  className="w-full bg-black/40 border border-stone-700 rounded-lg p-1.5 text-xs focus:border-amber-500 outline-none text-white font-mono"
                 />
               </div>
             </div>
@@ -163,7 +197,7 @@ export default function DandiyaRegistration() {
 
           {/* नाव */}
           <div>
-            <label className="text-xs text-stone-300 block mb-1">
+            <label className="text-[11px] text-stone-300 block mb-0.5">
               {entryType === 'group' ? 'प्रमुख व्यक्तीचे नाव *' : 'पूर्ण नाव *'}
             </label>
             <input
@@ -171,16 +205,16 @@ export default function DandiyaRegistration() {
               name="name"
               autoComplete="name"
               required
-              placeholder="Your Name"
+              placeholder="तुमचे नाव"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-black/40 border border-stone-700 rounded-xl p-2.5 text-sm focus:border-amber-500 outline-none text-white"
+              className="w-full bg-black/40 border border-stone-700 rounded-xl px-3 py-2 text-xs focus:border-amber-500 outline-none text-white"
             />
           </div>
 
           {/* मोबाईल नंबर */}
           <div>
-            <label className="text-xs text-stone-300 block mb-1">मोबाईल नंबर *</label>
+            <label className="text-[11px] text-stone-300 block mb-0.5">मोबाईल नंबर *</label>
             <input
               type="tel"
               name="tel"
@@ -190,44 +224,44 @@ export default function DandiyaRegistration() {
               placeholder="१० अंकी मोबाईल नंबर"
               value={formData.mobile}
               onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-              className="w-full bg-black/40 border border-stone-700 rounded-xl p-2.5 text-sm focus:border-amber-500 outline-none text-white font-mono"
+              className="w-full bg-black/40 border border-stone-700 rounded-xl px-3 py-2 text-xs focus:border-amber-500 outline-none text-white font-mono"
             />
           </div>
 
           {/* ठिकाण */}
           <div>
-            <label className="text-xs text-stone-300 block mb-1">परिसर / ठिकाण *</label>
+            <label className="text-[11px] text-stone-300 block mb-0.5">परिसर / ठिकाण *</label>
             <input
               type="text"
               required
-              placeholder="उदा. Lower Parel,Worli,Dadar,Prabhadevi"
+              placeholder="उदा. Lower Parel, Worli, Dadar"
               value={formData.place}
               onChange={(e) => setFormData({ ...formData, place: e.target.value })}
-              className="w-full bg-black/40 border border-stone-700 rounded-xl p-2.5 text-sm focus:border-amber-500 outline-none text-white"
+              className="w-full bg-black/40 border border-stone-700 rounded-xl px-3 py-2 text-xs focus:border-amber-500 outline-none text-white"
             />
           </div>
 
           {/* आधीच बँड असल्यास चेकबॉक्स */}
-          <div className="pt-2 border-t border-stone-800">
-            <label className="flex items-center space-x-2 text-xs text-stone-300 cursor-pointer">
+          <div className="pt-1.5 border-t border-stone-800">
+            <label className="flex items-center space-x-2 text-[11px] text-stone-300 cursor-pointer">
               <input
                 type="checkbox"
                 checked={hasBand}
                 onChange={(e) => setHasBand(e.target.checked)}
-                className="w-4 h-4 rounded border-stone-700 text-amber-500 focus:ring-0"
+                className="w-3.5 h-3.5 rounded border-stone-700 text-amber-500 focus:ring-0"
               />
               <span>माझ्याकडे आधीच रिस्टबँड आहे</span>
             </label>
 
             {hasBand && (
-              <div className="mt-2.5">
+              <div className="mt-1.5">
                 <input
                   type="text"
                   required={hasBand}
-                  placeholder="बँडवरील नंबर टाका (उदा. 253915)"
+                  placeholder="बँडवरील नंबर (उदा. 253915)"
                   value={formData.bandNo}
                   onChange={(e) => setFormData({ ...formData, bandNo: e.target.value })}
-                  className="w-full bg-black/40 border border-amber-500/60 rounded-xl p-2.5 text-xs text-amber-200 font-mono outline-none"
+                  className="w-full bg-black/40 border border-amber-500/60 rounded-xl p-2 text-xs text-amber-200 font-mono outline-none"
                 />
               </div>
             )}
@@ -237,7 +271,7 @@ export default function DandiyaRegistration() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-bold rounded-xl text-sm transition active:scale-95 shadow-lg"
+            className="w-full mt-1 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-bold rounded-xl text-xs transition active:scale-95 shadow-md"
           >
             {loading ? 'नोंदणी होत आहे...' : 'टोकन मिळवा (नोंदणी पूर्ण)'}
           </button>
