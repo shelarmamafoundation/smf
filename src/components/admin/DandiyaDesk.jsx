@@ -5,6 +5,18 @@ import { Search, RefreshCw, CheckCircle2, Clock, Check, Phone, MapPin, Ticket, C
 export default function DandiyaDesk() {
   const SCRIPT_URL = import.meta.env.VITE_DANDIYA_SCRIPT_URL;
 
+  // Aajchya divasanusar automatic default date thevne, event samplyavar automatic 'all' hoil
+  const getInitialDateFilter = () => {
+    const today = new Date();
+    const day = today.getDate();
+    const month = today.getMonth(); // 9 mhanje October (0-indexed)
+    
+    if (month === 9 && [16, 17, 18, 19].includes(day)) {
+      return `${day}-Oct`;
+    }
+    return 'all'; // Event nantar kiva aadhi automatic sarv records distil
+  };
+
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -12,7 +24,7 @@ export default function DandiyaDesk() {
   
   // Filters
   const [statusFilter, setStatusFilter] = useState('pending'); // 'all', 'pending', 'issued'
-  const [dateFilter, setDateFilter] = useState('17-Oct'); // Default aajchi tarikh
+  const [dateFilter, setDateFilter] = useState(getInitialDateFilter);
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'single', 'dual', 'group'
 
   const [bandInputs, setBandInputs] = useState({});
@@ -67,7 +79,7 @@ export default function DandiyaDesk() {
   const handleInlineAssign = async (item) => {
     const inputVal = bandInputs[item.tokenId]?.trim();
     if (!inputVal) {
-      alert('Krupaya wristband number taka!');
+      alert('कृपया रिस्टबँड नंबर टाका!');
       return;
     }
 
@@ -93,10 +105,10 @@ export default function DandiyaDesk() {
           )
         );
       } else {
-        alert(data.message || 'Truti aali!');
+        alert(data.message || 'त्रुटी आली!');
       }
     } catch (err) {
-      alert('Network error: ' + err.message);
+      alert('नेटवर्क एरर: ' + err.message);
     } finally {
       setAssigningRow(null);
     }
@@ -149,7 +161,7 @@ export default function DandiyaDesk() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const activeDateLabel = dateFilter === 'all' ? 'Sarv Divas' : `${dateFilter}`;
+  const activeDateLabel = dateFilter === 'all' ? 'सर्व दिवस' : `${dateFilter}`;
 
   return (
     <div className="p-2.5 max-w-2xl mx-auto space-y-2.5 font-sans">
@@ -161,7 +173,7 @@ export default function DandiyaDesk() {
           <div>
             <h1 className="text-xs font-black text-slate-800">दांडिया रिस्टबँड डेस्क</h1>
             <p className="text-[10px] text-slate-500 font-medium">
-              {activeDateLabel} aakde: <strong className="text-slate-800">{dateTotalTokens} Pass ({dateTotalHeadcount} Vyakti)</strong>
+              {activeDateLabel} आकडे: <strong className="text-slate-800">{dateTotalTokens} पास ({dateTotalHeadcount} व्यक्ती)</strong>
             </p>
           </div>
         </div>
@@ -176,7 +188,7 @@ export default function DandiyaDesk() {
         </button>
       </div>
 
-      {/* 2. Tarikh Nivada (Date Filter Chips) */}
+      {/* 2. तारीख निवड (Date Filter Chips) - देवनागरी लेबल */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar bg-slate-100/70 p-1.5 rounded-xl border border-slate-200">
         <span className="text-[10px] font-bold text-slate-500 pl-1 flex items-center gap-1 shrink-0">
           <Calendar className="w-3.5 h-3.5 text-amber-600" />
@@ -185,7 +197,7 @@ export default function DandiyaDesk() {
         {[
           { id: 'all', label: 'सर्व दिवस' },
           { id: '16-Oct', label: '16 Oct' },
-          { id: '17-Oct', label: '17 Oct (आज)' },
+          { id: '17-Oct', label: '17 Oct' },
           { id: '18-Oct', label: '18 Oct' },
           { id: '19-Oct', label: '19 Oct' }
         ].map((d) => (

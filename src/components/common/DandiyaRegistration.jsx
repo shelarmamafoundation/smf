@@ -3,15 +3,16 @@ import React, { useState } from 'react';
 export default function DandiyaRegistration() {
   const SCRIPT_URL = import.meta.env.VITE_DANDIYA_SCRIPT_URL;
 
-  // 16 Oct expired, 17-19 open (ekach row sathi ultra-compact chips)
+  // 16, 17, 18 ऑक्टोबर पूर्ण बंद (Disabled). फक्त 19 ऑक्टोबर सुरू (Active).
   const DATES = [
     { key: '16-Oct', label: '16 Oct', active: false },
-    { key: '17-Oct', label: '17 Oct (आज)', active: true },
-    { key: '18-Oct', label: '18 Oct', active: true },
-    { key: '19-Oct', label: '19 Oct', active: true },
+    { key: '17-Oct', label: '17 Oct', active: false },
+    { key: '18-Oct', label: '18 Oct', active: false },
+    { key: '19-Oct', label: '19 Oct (आज)', active: true },
   ];
 
-  const [selectedDate, setSelectedDate] = useState('17-Oct');
+  // डिफॉल्ट तारीख 19-Oct वर सेट केली
+  const [selectedDate, setSelectedDate] = useState('19-Oct');
   const [entryType, setEntryType] = useState('single');
   const [formData, setFormData] = useState({
     name: '',
@@ -31,7 +32,7 @@ export default function DandiyaRegistration() {
 
     const payload = {
       action: 'register',
-      bookingDate: selectedDate, // <-- Tarikh add keli
+      bookingDate: selectedDate, // 19-Oct शीटमध्ये जाईल
       entryType: entryType === 'group' ? `ग्रुप (${formData.totalCount})` : entryType,
       name: formData.name,
       mobile: formData.mobile,
@@ -115,12 +116,12 @@ export default function DandiyaRegistration() {
             शेलारमामा फाऊंडेशन
           </span>
           <h1 className="text-xl font-bold text-amber-200 mt-0.5">दांडिया पास २०२६</h1>
-          <p className="text-[10px] text-stone-400">१६ ते १९ ऑक्टोबर | जलद नोंदणी</p>
+          <p className="text-[10px] text-stone-400">१९ ऑक्टोबर | अंतिम दिवस नोंदणी</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           
-          {/* १. तारीख निवड (Single Compact Row) */}
+          {/* १. तारीख निवड (फक्त 19 Oct Open, बाकी तिन्ही Disabled) */}
           <div>
             <label className="text-[11px] text-stone-300 font-medium block mb-1">तारीख निवडा (Date)</label>
             <div className="grid grid-cols-4 gap-1">
@@ -129,12 +130,12 @@ export default function DandiyaRegistration() {
                   type="button"
                   key={d.key}
                   disabled={!d.active}
-                  onClick={() => setSelectedDate(d.key)}
+                  onClick={() => d.active && setSelectedDate(d.key)}
                   className={`py-1.5 text-[10px] font-bold rounded-lg border transition text-center truncate ${
                     !d.active
-                      ? 'opacity-30 bg-black/40 border-stone-800 text-stone-500 line-through cursor-not-allowed'
+                      ? 'opacity-35 bg-black/50 border-stone-800 text-stone-500 line-through cursor-not-allowed'
                       : selectedDate === d.key
-                      ? 'bg-amber-500 text-stone-950 border-amber-400 font-black shadow-xs'
+                      ? 'bg-amber-500 text-stone-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-300'
                       : 'bg-black/30 border-stone-800 text-stone-300 hover:border-stone-600'
                   }`}
                 >
@@ -144,7 +145,7 @@ export default function DandiyaRegistration() {
             </div>
           </div>
 
-          {/* २. प्रवेश प्रकार (Single Row) */}
+          {/* २. प्रवेश प्रकार */}
           <div>
             <label className="text-[11px] text-stone-300 font-medium block mb-1">प्रवेश प्रकार</label>
             <div className="grid grid-cols-3 gap-1.5">
@@ -234,7 +235,7 @@ export default function DandiyaRegistration() {
             <input
               type="text"
               required
-              placeholder="उदा. Lower Parel, Worli, Dadar"
+              placeholder="उदा. Lower Parel"
               value={formData.place}
               onChange={(e) => setFormData({ ...formData, place: e.target.value })}
               className="w-full bg-black/40 border border-stone-700 rounded-xl px-3 py-2 text-xs focus:border-amber-500 outline-none text-white"
@@ -273,7 +274,7 @@ export default function DandiyaRegistration() {
             disabled={loading}
             className="w-full mt-1 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 font-bold rounded-xl text-xs transition active:scale-95 shadow-md"
           >
-            {loading ? 'नोंदणी होत आहे...' : 'टोकन मिळवा (नोंदणी पूर्ण)'}
+            {loading ? 'नोंदणी होत आहे...' : 'टोकन मिळवा (१९ ऑक्टोबर नोंदणी)'}
           </button>
         </form>
       </div>
