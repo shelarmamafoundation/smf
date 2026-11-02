@@ -1,4 +1,3 @@
-// src/components/admin/finance/FinanceTransactionModal.jsx
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, Search, UserPlus, Check, UserCheck } from 'lucide-react';
 import Swal from 'sweetalert2';
@@ -16,10 +15,13 @@ export default function FinanceTransactionModal({
   const users = Array.isArray(usersList) ? usersList : [];
   const isAdminOrSuper = !currentUser?.role || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
 
+  const currentYearStr = new Date().getFullYear().toString();
+
   // फॉर्म स्टेट्स
   const [type, setType] = useState('EXPENSE');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [eventYear, setEventYear] = useState(currentYearStr);
 
   const [eventId, setEventId] = useState(existingEvents[0]?.id || 'general');
   const [isCustomEvent, setIsCustomEvent] = useState(false);
@@ -44,7 +46,7 @@ export default function FinanceTransactionModal({
   const [submitting, setSubmitting] = useState(false);
 
   // =========================================================
-  // FIX १: जर एडिट करायचे असेल तर जुना डेटा आपोआप Pre-fill करा
+  // एडिट करताना जुना डेटा आपोआप Pre-fill करणे
   // =========================================================
   useEffect(() => {
     if (initialData) {
@@ -52,6 +54,10 @@ export default function FinanceTransactionModal({
       setAmount(initialData.amount ? String(initialData.amount) : '');
       setDate(initialData.date || new Date().toISOString().split('T')[0]);
       
+      // इव्हेंट वर्ष Pre-fill (नसल्यास पेमेंट तारखेवरून किंवा चालू वर्ष)
+      const detectedYear = initialData.eventYear || (initialData.date ? new Date(initialData.date).getFullYear().toString() : currentYearStr);
+      setEventYear(detectedYear);
+
       // Event Pre-fill
       const isPredefinedEvent = existingEvents.some(ev => ev.id === initialData.eventId);
       if (isPredefinedEvent || initialData.eventId === 'general') {
@@ -169,7 +175,6 @@ export default function FinanceTransactionModal({
     setSubmitting(true);
 
     try {
-      // एडिट करताना जुनाच txnId ठेवणे किंवा नवीन बनवणे
       const txnId = initialData?.txnId || financeService.generateTransactionId(type, finalEventId, finalEventName, date);
 
       await onSave({
@@ -177,6 +182,7 @@ export default function FinanceTransactionModal({
         type,
         amount: numAmt,
         date,
+        eventYear: String(eventYear).trim() || currentYearStr,
         eventId: finalEventId,
         eventName: finalEventName,
         category: finalCategory || 'इतर',
@@ -203,6 +209,13 @@ export default function FinanceTransactionModal({
       setSubmitting(false);
     }
   };
+
+  // मागील ५ वर्षे आणि पुढील २ वर्षे जनरेट करणे
+  const numericCurrentYear = Number(currentYearStr);
+  const yearOptions = [];
+  for (let y = numericCurrentYear + 1; y >= numericCurrentYear - 4; y--) {
+    yearOptions.push(String(y));
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-xs font-sans">
@@ -264,8 +277,8 @@ export default function FinanceTransactionModal({
 
         <form onSubmit={handleSubmit} className="space-y-3 text-xs">
           
-          {/* Amount & Date */}
-          <div className="grid grid-cols-2 gap-2.5">
+          {/* Amount, Payment Date & Event Year */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
               <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">रक्कम (₹)*</label>
               <input 
@@ -280,7 +293,7 @@ export default function FinanceTransactionModal({
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">तारीख*</label>
+              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">पेमेंट तारीख*</label>
               <input 
                 type="date"
                 required
@@ -288,6 +301,20 @@ export default function FinanceTransactionModal({
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full h-9 px-2.5 rounded-xl border border-gray-300 text-xs font-bold focus:border-heritage-burgundy outline-none bg-white"
               />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-purple-900 uppercase mb-0.5">इव्हेंट वर्ष*</label>
+              <select
+                value={eventYear}
+                onChange={(e) => setEventYear(e.target.value)}
+                className="w-full h-9 px-2.5 rounded-xl border border-purple-300 bg-purple-50/50 text-purple-900 text-xs font-black focus:border-heritage-burgundy outline-none cursor-pointer"
+                title="खर्च कोणत्या वर्षाच्या इव्हेंटचा आहे"
+              >
+                {yearOptions.map((yr) => (
+                  <option key={yr} value={yr}>वर्ष {yr}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -508,14 +535,14 @@ export default function FinanceTransactionModal({
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
             <button 
               type="button" 
-              onClick={onClose}
+              onClick={onClose} 
               className="px-3.5 py-2 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition cursor-pointer"
             >
               रद्द करा
             </button>
             <button 
-              type="submit"
-              disabled={submitting}
+              type="submit" 
+              disabled={submitting} 
               className="px-5 py-2 rounded-xl bg-heritage-burgundy hover:bg-heritage-crimson text-white font-bold shadow-xs transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
             >
               {submitting ? (

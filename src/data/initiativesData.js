@@ -1,7 +1,7 @@
 export const INITIATIVES_DATA = [
   {
     id: 'chaitra-navratri',
-    titleMr: 'चैत्र नवरात्र',
+    titleMr: 'चैत्र नवरात्री ',
     titleEn: 'Chaitra Navratri',
     categoryMr: 'श्रद्धा • संस्कृती • परंपरा',
     categoryEn: 'Faith • Culture • Tradition',
@@ -54,7 +54,7 @@ export const INITIATIVES_DATA = [
   },
   {
     id: 'celebrity-cricket',
-    titleMr: 'Celebrity Box Cricket League',
+    titleMr: 'सेलिब्रेटी बॉक्स क्रिकेट लीग',
     titleEn: 'Celebrity Box Cricket League',
     categoryMr: 'क्रीडा • मनोरंजन • सेलिब्रिटी लीग',
     categoryEn: 'Sports • Entertainment • League',

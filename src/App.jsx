@@ -11,6 +11,11 @@ import HomePage from './pages/public/HomePage';
 import LoginPage from './pages/public/LoginPage';
 import InitiativeDetailPage from './pages/public/InitiativeDetailPage';
 import DandiyaRegistration from './components/common/DandiyaRegistration';
+import SaapshidiRegistration from './components/common/SaapshidiRegistration';
+import AboutPage from './pages/public/AboutPage';
+
+// Global Form Access Guard
+import FormAccessGuard from './components/common/FormAccessGuard';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -18,6 +23,7 @@ import UserManagementPage from './pages/admin/UserManagementPage';
 import AdminInitiativesPage from './pages/admin/AdminInitiativesPage';
 import AdminFinancePage from './pages/admin/AdminFinancePage';
 import DandiyaDesk from './components/admin/DandiyaDesk';
+import SaapshidiDesk from './components/admin/SaapshidiDesk';
 
 // Quick Admin Floating Button
 import AdminFloatingButton from './components/common/AdminFloatingButton';
@@ -31,9 +37,28 @@ export default function App() {
         <Route path="/" element={<PublicLayout />}>
           <Route index element={<HomePage />} />
           <Route path="initiatives/:id" element={<InitiativeDetailPage lang="mr" />} />
+          <Route path="/about" element={<AboutPage />} />
         </Route>
 
-        <Route path="/dandiya" element={<DandiyaRegistration />} />
+        {/* दांडिया नोंदणी फॉर्म (ग्लोबल गार्डसह) */}
+        <Route 
+          path="/dandiya" 
+          element={
+            <FormAccessGuard formKey="dandiya" defaultTitle="आपला दांडिया २०२६">
+              <DandiyaRegistration />
+            </FormAccessGuard>
+          } 
+        />
+
+        {/* सापशिडी नोंदणी फॉर्म (ग्लोबल गार्डसह) */}
+        <Route 
+          path="/saapshidi" 
+          element={
+            <FormAccessGuard formKey="saapshidi" defaultTitle="भव्य सापशिडी स्पर्धा २०२६">
+              <SaapshidiRegistration />
+            </FormAccessGuard>
+          } 
+        /> 
 
         {/* 2. Login Route */}
         <Route path="/login" element={<LoginPage />} />
@@ -45,12 +70,16 @@ export default function App() {
           <Route path="initiatives" element={<AdminInitiativesPage />} />
           <Route path="finance" element={<AdminFinancePage />} />
           <Route path="dandiya-desk" element={<DandiyaDesk />} />
+          <Route path="saapshidi-desk" element={<SaapshidiDesk />} />
         </Route>
 
         {/* 4. Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
+
+      {/* Floating Admin Button */}
+      <AdminFloatingButton />
     </HashRouter>
   );
 }

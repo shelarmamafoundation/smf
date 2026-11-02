@@ -1,9 +1,12 @@
-// src/pages/public/InitiativeDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Image as ImageIcon, Sparkles, X, FileText } from 'lucide-react';
+import { 
+  ArrowLeft, Calendar, Image as ImageIcon, Sparkles, X, 
+  ChevronLeft, ChevronRight, Filter, Users 
+} from 'lucide-react';
 import { INITIATIVES_DATA } from '../../data/initiativesData';
 import { initiativeService } from '../../services/initiativeService';
+import EventCommitteeModal from '../../components/common/EventCommitteeModal';
 
 export default function InitiativeDetailPage({ lang = 'mr' }) {
   const { id } = useParams();
@@ -17,7 +20,16 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
   const [selectedYear, setSelectedYear] = useState('');
   const [yearData, setYearData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activePreview, setActivePreview] = useState(null);
+
+  // Committee Modal State
+  const [showCommitteeModal, setShowCommitteeModal] = useState(false);
+
+  // Lightbox Slider States
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Day Filter State
+  const [selectedDayFilter, setSelectedDayFilter] = useState('ALL');
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -31,7 +43,7 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
       const yrs = await initiativeService.getAvailableYears(initiative.id);
       setAvailableYears(yrs);
       if (yrs.length > 0) {
-        setSelectedYear(yrs[0]); // Sarvat naveen varsh select karne
+        setSelectedYear(yrs[0]);
       }
     }
 
@@ -47,6 +59,7 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
       try {
         const data = await initiativeService.getYearGallery(initiative.id, selectedYear);
         setYearData(data);
+        setSelectedDayFilter('ALL');
       } catch (err) {
         console.error(err);
       } finally {
@@ -56,6 +69,42 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
 
     loadYearContent();
   }, [initiative, selectedYear]);
+
+  // Lightbox Navigation Functions
+  const allSlots = yearData?.slots || [];
+  const visibleSlots = selectedDayFilter === 'ALL' 
+    ? allSlots 
+    : allSlots.filter(s => s.dayTag === selectedDayFilter);
+
+  const openLightbox = (slot) => {
+    const idx = visibleSlots.findIndex(s => s.slotNo === slot.slotNo);
+    setCurrentIndex(idx >= 0 ? idx : 0);
+    setLightboxOpen(true);
+  };
+
+  const handlePrev = (e) => {
+    e?.stopPropagation();
+    setCurrentIndex(prev => (prev === 0 ? visibleSlots.length - 1 : prev - 1));
+  };
+
+  const handleNext = (e) => {
+    e?.stopPropagation();
+    setCurrentIndex(prev => (prev === visibleSlots.length - 1 ? 0 : prev + 1));
+  };
+
+  // Keyboard Navigation (Arrow Keys & Escape)
+  useEffect(() => {
+    if (!lightboxOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+      if (e.key === 'ArrowLeft') handlePrev();
+      if (e.key === 'ArrowRight') handleNext();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxOpen, visibleSlots.length]);
 
   if (!initiative) {
     return (
@@ -73,6 +122,7 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
 
   const cleanPath = initiative.image?.startsWith('/') ? initiative.image.slice(1) : initiative.image;
   const fullCoverSrc = `${base}${cleanPath}`;
+  const currentPhoto = visibleSlots[currentIndex];
 
   return (
     <div className="min-h-screen bg-heritage-cream font-sans pb-24">
@@ -114,40 +164,59 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
       {/* Main Content Area */}
       <div className="max-w-5xl mx-auto px-4 sm:px-8 mt-8 space-y-10">
         
-        {/* Dynamic Year Tabs */}
-        {availableYears.length > 0 && (
-          <div className="flex items-center justify-between border-b border-heritage-gold/20 pb-3">
-            <span className="text-xs font-extrabold text-heritage-burgundy uppercase tracking-wider">
+        {/* Dynamic Year Tabs & Committee Button Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-heritage-gold/20 pb-3">
+          
+          {/* Year Switcher */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-extrabold text-heritage-burgundy uppercase tracking-wider shrink-0">
               वर्ष निवडा:
             </span>
-            <div className="flex items-center gap-2 bg-white p-1 rounded-2xl border border-heritage-gold/30 shadow-xs">
-              {availableYears.map((yr) => (
-                <button
-                  key={yr}
-                  onClick={() => setSelectedYear(yr)}
-                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    selectedYear === yr
-                      ? 'bg-heritage-burgundy text-white shadow-sm'
-                      : 'text-gray-600 hover:text-heritage-burgundy'
-                  }`}
-                >
-                  {yr}
-                </button>
-              ))}
-            </div>
+            {availableYears.length > 0 ? (
+              <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-heritage-gold/30 shadow-xs overflow-x-auto">
+                {availableYears.map((yr) => (
+                  <button
+                    key={yr}
+                    onClick={() => setSelectedYear(yr)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                      selectedYear === yr
+                        ? 'bg-heritage-burgundy text-white shadow-sm'
+                        : 'text-gray-600 hover:text-heritage-burgundy'
+                    }`}
+                  >
+                    {yr}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1 rounded-xl border border-gray-200">
+                चालू वर्ष
+              </span>
+            )}
           </div>
-        )}
+
+          {/* Committee Popup Button */}
+          <button
+            type="button"
+            onClick={() => setShowCommitteeModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-600 via-amber-700 to-heritage-burgundy hover:opacity-95 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer self-start sm:self-auto border border-amber-400/40"
+          >
+            <Users className="w-4 h-4 text-amber-300" />
+            <span>उत्सव संयोजन समिती ({selectedYear || 'चालू वर्ष'})</span>
+          </button>
+
+        </div>
 
         {/* Narrative & Highlights Section */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-heritage-gold/20 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h2 className="text-lg font-black text-heritage-burgundy flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-heritage-gold" />
               <span>{yearData?.headlineMr || (lang === 'mr' ? 'उपक्रमाविषयी माहिती' : 'About Initiative')}</span>
             </h2>
-            {yearData?.eventDate && (
-              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                दिनांक: {yearData.eventDate}
+            {(yearData?.startDate || yearData?.eventDate) && (
+              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full self-start sm:self-auto">
+                कालावधी: {yearData.startDate || yearData.eventDate} {yearData.endDate && yearData.endDate !== yearData.startDate ? `ते ${yearData.endDate}` : ''}
               </span>
             )}
           </div>
@@ -156,31 +225,75 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
           </p>
         </div>
 
-        {/* 10-Photo Gallery Section */}
+        {/* Photo Gallery Section */}
         <div className="space-y-6">
-          <h2 className="text-xl sm:text-2xl font-black text-heritage-burgundy flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 text-heritage-crimson" />
-            <span>छायाचित्रे ({selectedYear})</span>
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-xl sm:text-2xl font-black text-heritage-burgundy flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-heritage-crimson" />
+              <span>छायाचित्रे ({selectedYear})</span>
+            </h2>
+
+            {/* Day / Sub-event Filter Tabs */}
+            {yearData?.eventDays && yearData.eventDays.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 shrink-0 mr-1">
+                  <Filter className="w-3.5 h-3.5" /> दिवस:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDayFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                    selectedDayFilter === 'ALL'
+                      ? 'bg-heritage-burgundy text-white shadow-xs'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  सर्व फोटो ({allSlots.length})
+                </button>
+                {yearData.eventDays.map((day) => {
+                  const count = allSlots.filter(s => s.dayTag === day.title).length;
+                  return (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => setSelectedDayFilter(day.title)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                        selectedDayFilter === day.title
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-white text-amber-900 border border-amber-200 hover:bg-amber-50'
+                      }`}
+                    >
+                      {day.title} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {loading ? (
             <div className="py-16 text-center text-gray-400 text-xs">फोटो लोड होत आहेत...</div>
-          ) : yearData?.slots?.length > 0 ? (
+          ) : visibleSlots.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {yearData.slots.map((slot) => (
+              {visibleSlots.map((slot) => (
                 <div 
                   key={slot.slotNo}
-                  onClick={() => setActivePreview(slot.url)}
+                  onClick={() => openLightbox(slot)}
                   className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-heritage-gold/20 shadow-xs cursor-pointer hover:shadow-lg transition"
                 >
                   <img 
                     src={slot.thumbUrl || slot.url} 
-                    alt={slot.caption || `Photo ${slot.slotNo}`}
+                    alt={slot.caption || `Photo ${slot.slotNo}`} 
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                     loading="lazy"
                   />
+                  {slot.dayTag && (
+                    <span className="absolute top-2 left-2 z-10 text-[9px] font-black px-2 py-0.5 rounded-md bg-amber-500 text-white shadow">
+                      {slot.dayTag}
+                    </span>
+                  )}
                   {slot.caption && (
-                    <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent text-[11px] text-white font-medium truncate">
+                    <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-[11px] text-white font-medium truncate">
                       {slot.caption}
                     </div>
                   )}
@@ -191,7 +304,9 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
             <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300">
               <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <p className="text-sm font-semibold text-gray-500">
-                वर्ष {selectedYear} चे फोटो अद्याप अपलोड केलेले नाहीत.
+                {selectedDayFilter !== 'ALL' 
+                  ? `"${selectedDayFilter}" साठी फोटो उपलब्ध नाहीत.` 
+                  : `वर्ष ${selectedYear} चे फोटो अद्याप अपलोड केलेले नाहीत.`}
               </p>
             </div>
           )}
@@ -199,25 +314,88 @@ export default function InitiativeDetailPage({ lang = 'mr' }) {
 
       </div>
 
-      {/* Lightbox Modal */}
-      {activePreview && (
+      {/* Lightbox Slider Modal with Next, Prev & Keyboard Arrow Support */}
+      {lightboxOpen && currentPhoto && (
         <div 
-          onClick={() => setActivePreview(null)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setLightboxOpen(false)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 select-none"
         >
+          {/* Close Button */}
           <button 
-            onClick={() => setActivePreview(null)}
-            className="absolute top-6 right-6 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-5 right-5 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer z-50"
+            title="बंद करा (Esc)"
           >
             <X className="w-6 h-6" />
           </button>
-          <img 
-            src={activePreview} 
-            alt="Preview" 
-            className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" 
-          />
+
+          {/* Photo Counter */}
+          <div className="absolute top-5 left-5 z-50 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-bold">
+            {currentIndex + 1} / {visibleSlots.length}
+          </div>
+
+          {/* Previous Button */}
+          {visibleSlots.length > 1 && (
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="absolute left-3 sm:left-6 z-50 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition active:scale-90 cursor-pointer"
+              title="मागील फोटो (←)"
+            >
+              <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
+            </button>
+          )}
+
+          {/* Active Image Box */}
+          <div 
+            className="max-w-5xl max-h-[85vh] p-2 flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={currentPhoto.url || currentPhoto.thumbUrl} 
+              alt={currentPhoto.caption || `Photo ${currentIndex + 1}`} 
+              className="max-h-[75vh] w-auto max-w-full object-contain rounded-2xl shadow-2xl transition duration-200" 
+            />
+
+            {(currentPhoto.caption || currentPhoto.dayTag) && (
+              <div className="mt-3 text-center space-y-1">
+                {currentPhoto.dayTag && (
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white uppercase tracking-wider">
+                    {currentPhoto.dayTag}
+                  </span>
+                )}
+                {currentPhoto.caption && (
+                  <p className="text-white text-xs sm:text-sm font-medium">
+                    {currentPhoto.caption}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Next Button */}
+          {visibleSlots.length > 1 && (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="absolute right-3 sm:right-6 z-50 p-2 sm:p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition active:scale-90 cursor-pointer"
+              title="पुढील फोटो (→)"
+            >
+              <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
+            </button>
+          )}
         </div>
       )}
+
+      {/* Event Committee Popup Modal */}
+      <EventCommitteeModal
+        isOpen={showCommitteeModal}
+        onClose={() => setShowCommitteeModal(false)}
+        eventId={initiative.id}
+        eventTitle={initiative.titleMr}
+        year={selectedYear || new Date().getFullYear().toString()}
+      />
 
     </div>
   );

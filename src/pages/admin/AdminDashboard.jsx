@@ -5,12 +5,17 @@ import { Link } from 'react-router-dom';
 import { INITIATIVES_DATA } from '../../data/initiativesData';
 import { userService } from '../../services/userService';
 import { financeService } from '../../services/financeService';
+import { authService } from '../../services/authService';
+import FormControllerCard from '../../components/admin/FormControllerCard';
 
 export default function AdminDashboard() {
   const [userCount, setUserCount] = useState(0);
   const [netBalance, setNetBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const totalEvents = INITIATIVES_DATA.length;
+
+  const currentUser = authService.getCurrentUser();
+  const isSuperAdmin = Boolean(currentUser?.isSuperAdmin || currentUser?.role === 'super_admin');
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -93,6 +98,9 @@ export default function AdminDashboard() {
           </span>
         </div>
       </div>
+
+      {/* Form On/Off Controller Panel */}
+      <FormControllerCard isSuperAdmin={isSuperAdmin} />
 
       {/* Quick Action Navigation Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

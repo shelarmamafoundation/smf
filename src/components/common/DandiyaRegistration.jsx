@@ -59,6 +59,8 @@ export default function DandiyaRegistration() {
     }
   };
 
+  
+
   // नोंदणी यशस्वी झाल्यावर दिसणारा स्क्रीन (टोकन कार्ड)
   if (tokenResult) {
     return (
@@ -281,3 +283,4 @@ export default function DandiyaRegistration() {
     </div>
   );
 }
+

@@ -11,7 +11,8 @@ import {
   LogOut, 
   ArrowLeft,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Trophy 
 } from 'lucide-react';
 import { authService } from '../services/authService';
 
@@ -51,19 +52,35 @@ export default function AdminLayout() {
     return <Navigate to="/admin" replace />;
   }
 
+// Saapshidi permission (Super Admin kiva custom role pramane)
+  const canSaapshidi = isSuperAdmin || currentUser?.permissions?.saapshidi || canEvents;
+
   // Fakt Dandiya Desk permission aslyas direct Dandiya Desk var pathva
-  const isOnlyDandiya = !isSuperAdmin && canDandiya && !canEvents && !canFinance;
+  const isOnlyDandiya = !isSuperAdmin && canDandiya && !canEvents && !canFinance && !canSaapshidi;
   if (isOnlyDandiya && currentPath === '/admin') {
     return <Navigate to="/admin/dandiya-desk" replace />;
   }
 
-  // Dynamic Nav Items (Jya module chi permission ahe tech menu madhe distil)
+  // Fakt Saapshidi Desk permission aslyas direct Saapshidi Desk var pathva
+  const isOnlySaapshidi = !isSuperAdmin && canSaapshidi && !canDandiya && !canEvents && !canFinance;
+  if (isOnlySaapshidi && currentPath === '/admin') {
+    return <Navigate to="/admin/saapshidi-desk" replace />;
+  }
+
+// Dynamic Nav Items (Jya module chi permission ahe tech menu madhe distil)
   const navItems = [
-    ...(!isOnlyDandiya ? [{
+    ...(!isOnlyDandiya && !isOnlySaapshidi ? [{
       to: '/admin',
       end: true,
       labelMr: 'डॅशबोर्ड',
       icon: LayoutDashboard,
+    }] : []),
+
+    // Navin Saapshidi Desk Item
+    ...(canSaapshidi ? [{
+      to: '/admin/saapshidi-desk',
+      labelMr: 'सापशिडी डेस्क',
+      icon: Trophy,
     }] : []),
 
     ...(canDandiya ? [{
