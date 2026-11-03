@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, MapPin, Sparkles, Trophy, Gift, Clock, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Sparkles, Trophy, Gift, Clock, ArrowRight ,Award} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function UpcomingEventSection({ lang }) {
@@ -15,20 +15,23 @@ export default function UpcomingEventSection({ lang }) {
       <div className="max-w-[1300px] mx-auto px-4 sm:px-8 relative z-10">
         
         {/* Header Tag */}
-        <div className="text-center mb-10 sm:mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-heritage-gold/40 text-heritage-goldLight text-xs font-bold uppercase tracking-wider mb-3 backdrop-blur-md animate-pulse">
-            <Sparkles className="w-3.5 h-3.5 text-heritage-gold" />
-            <span>{lang === 'mr' ? 'दिवाळी विशेष आगामी स्पर्धा' : 'Diwali Special Upcoming Competition'}</span>
-          </div>
-          <h2 className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-heritage-goldLight via-heritage-gold to-amber-200">
-            {lang === 'mr' ? 'भव्य सापशिडी स्पर्धा २०२६' : 'Grand Saapshidi Competition 2026'}
-          </h2>
-          <p className="text-sm sm:text-base text-gray-300 mt-2 font-medium">
-            {lang === 'mr' 
-              ? '२० × २० फुटांच्या भव्य पटावर महिला होणार सोंगट्या! • फक्त महिलांसाठी' 
-              : 'Women will become tokens on a giant 20x20 ft board! • Exclusively for Women'}
-          </p>
-        </div>
+<div className="text-center mb-8 sm:mb-12">
+  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-heritage-gold/40 text-amber-200 text-xs font-bold uppercase tracking-wider mb-3 backdrop-blur-md">
+    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+    <span>{lang === 'mr' ? 'दिवाळी विशेष आगामी स्पर्धा' : 'Diwali Special Upcoming Competition'}</span>
+  </div>
+
+  {/* Clip-text kadhun clean text color dila jyamule Devanagari matra cut honar nahi */}
+  <h2 className="text-3xl sm:text-5xl font-black text-amber-300 tracking-normal drop-shadow-md leading-tight">
+    {lang === 'mr' ? 'भव्य सापशिडी स्पर्धा २०२६' : 'Grand Saapshidi Competition 2026'}
+  </h2>
+
+  <p className="text-sm sm:text-base text-gray-200 mt-2 font-medium">
+    {lang === 'mr' 
+      ? '२० × २० फुटांच्या भव्य पटावर महिला होणार सोंगट्या! • फक्त महिलांसाठी' 
+      : 'Women will become tokens on a giant 20x20 ft board! • Exclusively for Women'}
+  </p>
+</div>
 
         {/* Event Main Showcase Card */}
         <div className="bg-white/5 border border-heritage-gold/30 rounded-3xl p-5 sm:p-8 lg:p-10 backdrop-blur-xl shadow-2xl grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
@@ -69,33 +72,63 @@ export default function UpcomingEventSection({ lang }) {
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
                     <span>सायंकाळी</span>
                   </div>
-                  <div className="text-xl sm:text-2xl font-black text-amber-300 mt-0.5">६:०० वाजता</div>
+                  <div className="text-xl sm:text-2xl font-black text-amber-300 mt-0.5">७:०० वाजता</div>
                 </div>
               </div>
             </div>
 
             {/* मुख्य वैशिष्ट्ये (Prizes & Special Highlights) */}
-            <div className="grid sm:grid-cols-2 gap-3.5 pt-1">
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-amber-500/20 flex items-start gap-3">
+          <div className="space-y-3 pt-1">
+            <div className="grid sm:grid-cols-3 gap-3">
+              
+              {/* प्रथम क्रमांक */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-amber-500/30 flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
                   <Trophy className="w-5 h-5" />
                 </div>
                 <div>
                   <h4 className="font-bold text-amber-300 text-sm">मानाची पैठणी! 👑</h4>
-                  <p className="text-xs text-gray-300 mt-0.5">प्रथम क्रमांकाच्या विजेत्या महिलेला भव्य मानाची पैठणी</p>
+                  <p className="text-xs text-gray-300 mt-0.5 leading-snug">
+                    प्रथम क्रमांकाच्या विजेत्या महिलेला मानाची पैठणी!
+                  </p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-emerald-500/20 flex items-start gap-3">
+              {/* द्वितीय व तृतीय क्रमांक */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-sky-500/30 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sky-300 text-sm">बहुमान 🎁</h4>
+                  <p className="text-xs text-gray-300 mt-0.5 leading-snug">
+                    द्वितीय व तृतीय विजेत्या महिलांना एक आकर्षक बक्षीस
+                  </p>
+                </div>
+              </div>
+
+              {/* सहभागी स्पर्धक */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-emerald-500/30 flex items-start gap-3 sm:col-span-1">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                   <Gift className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-emerald-400 text-sm">१०० खेळाडू – १०० बक्षिसे</h4>
-                  <p className="text-xs text-gray-300 mt-0.5">प्रत्येक सहभागी महिलेस आकर्षक भेटवस्तू</p>
+                  <h4 className="font-bold text-emerald-300 text-sm">गिफ्ट व्हाउचर्स 🎟️</h4>
+                  <p className="text-xs text-gray-300 mt-0.5 leading-snug">
+                    भाग घेणाऱ्या स्पर्धकांना सुद्धा गिफ्ट व्हाउचर्स मिळणार !
+                  </p>
                 </div>
               </div>
+
             </div>
+
+            {/* आकर्षक टॅगलाईन बॅनर */}
+            <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-heritage-burgundy/30 to-amber-500/10 border border-amber-500/20 text-center">
+              <p className="text-xs sm:text-sm font-bold text-amber-200 tracking-wide">
+                ✨ खेळ, मनोरंजन आणि उत्साहाची अनोखी पर्वणी! ✨
+              </p>
+            </div>
+          </div>
 
             {/* ठिकाण */}
             <div className="p-3.5 rounded-2xl bg-white/5 border border-heritage-gold/30 flex items-start gap-3">
@@ -114,8 +147,8 @@ export default function UpcomingEventSection({ lang }) {
             <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">आयोजक</span>
-                <div className="text-base font-bold text-heritage-gold">शेलारमामा फाऊंडेशन</div>
-                <div className="text-[11px] text-gray-300">सुशांत अरुण शेलार</div>
+                <div className="text-base font-bold text-heritage-gold">शेलारमामा फाऊंडेशन आणि आँरा यूनिसेक्स सलोन</div>
+                
               </div>
 
               {/* Action Buttons */}
