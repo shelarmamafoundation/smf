@@ -123,7 +123,7 @@ export default function EventCommitteeModal({ isOpen, onClose, eventId, eventTit
                       alt={m.name} 
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200';
+                        e.target.src = 'https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-profile-glyph-black-icon-png-image_691589.jpg';
                       }}
                     />
                   </div>

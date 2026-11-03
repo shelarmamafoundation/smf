@@ -39,7 +39,7 @@ export const initiativeService = {
     }
   },
 
-  // 2. Tharavik varshachi mahiti aani photo slots milavne
+  // 2. Tharavik varshachi mahiti aani photo slots milavne (FAKT 1 READ)
   async getYearGallery(initiativeId, year) {
     const cacheKey = `smf_gallery_${initiativeId}_${year}`;
     const cached = localStorage.getItem(cacheKey);
@@ -50,8 +50,20 @@ export const initiativeService = {
 
       if (snap.exists()) {
         const data = snap.data();
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-        return data;
+        
+        // Formatted data with date ranges and fallback
+        const formattedData = {
+          id: snap.id,
+          ...data,
+          startDate: data.startDate || data.eventDate || '',
+          endDate: data.endDate || data.startDate || data.eventDate || '',
+          eventDate: data.startDate || data.eventDate || '',
+          eventDays: Array.isArray(data.eventDays) ? data.eventDays : [],
+          slots: Array.isArray(data.slots) ? data.slots : []
+        };
+
+        localStorage.setItem(cacheKey, JSON.stringify(formattedData));
+        return formattedData;
       }
       return cached ? JSON.parse(cached) : null;
     } catch (err) {
@@ -60,16 +72,22 @@ export const initiativeService = {
     }
   },
 
-  // 3. Mahiti aani photos save karne (Fakt 1 Firestore write)
+  // 3. Mahiti, date range, divas aani photos save karne (FAKT 1 WRITE)
   async saveYearGallery(initiativeId, year, payload) {
     const docRef = doc(db, 'initiatives_years', `${initiativeId}_${year}`);
     
+    const start = payload.startDate || payload.eventDate || '';
+    const end = payload.endDate || payload.startDate || payload.eventDate || '';
+
     const dataToSave = {
       initiativeId,
       year: String(year),
-      eventDate: payload.eventDate || '',
+      startDate: start,
+      endDate: end,
+      eventDate: start,
       headlineMr: payload.headlineMr || '',
       descriptionMr: payload.descriptionMr || '',
+      eventDays: payload.eventDays || [],
       slots: payload.slots || [],
       updatedAt: serverTimestamp()
     };

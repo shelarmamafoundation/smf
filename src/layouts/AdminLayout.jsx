@@ -1,3 +1,4 @@
+// src/layouts/AdminLayout.jsx
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { 
@@ -12,19 +13,22 @@ import {
   ArrowLeft,
   ShieldCheck,
   ShieldAlert,
-  Trophy 
+  Trophy,
+  Layers,
+  ChevronUp
 } from 'lucide-react';
 import { authService } from '../services/authService';
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [deskDrawerOpen, setDeskDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const base = import.meta.env.BASE_URL;
 
   const currentUser = authService.getCurrentUser();
 
-  // Jar login ch nasel tar login page var pathva
+  // लॉगिन नसेल तर लॉगिन पानावर पाठवणे
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
@@ -35,9 +39,9 @@ export default function AdminLayout() {
   const canEvents = isSuperAdmin || Boolean(perms.events?.canView || perms.events?.canEdit);
   const canFinance = isSuperAdmin || Boolean(perms.finance?.canView || perms.finance?.canEdit);
   const canDandiya = isSuperAdmin || Boolean(perms.dandiyaDesk?.canAccess);
-  const canUsers = isSuperAdmin; // User Management fakt aani fakt Super Admin sathi!
+  const canUsers = isSuperAdmin; // User Management फक्त आणि फक्त Super Admin साठी
 
-  // Route Level Security (Jar user direct URL type karun aala tar block karne)
+  // Route Level Security
   const currentPath = location.pathname;
   if (currentPath.includes('/admin/users') && !canUsers) {
     return <Navigate to="/admin" replace />;
@@ -52,22 +56,22 @@ export default function AdminLayout() {
     return <Navigate to="/admin" replace />;
   }
 
-// Saapshidi permission (Super Admin kiva custom role pramane)
+  // Saapshidi permission
   const canSaapshidi = isSuperAdmin || currentUser?.permissions?.saapshidi || canEvents;
 
-  // Fakt Dandiya Desk permission aslyas direct Dandiya Desk var pathva
+  // केवळ दांडिया डेस्क परवानगी असल्यास
   const isOnlyDandiya = !isSuperAdmin && canDandiya && !canEvents && !canFinance && !canSaapshidi;
   if (isOnlyDandiya && currentPath === '/admin') {
     return <Navigate to="/admin/dandiya-desk" replace />;
   }
 
-  // Fakt Saapshidi Desk permission aslyas direct Saapshidi Desk var pathva
+  // केवळ सापशिडी डेस्क परवानगी असल्यास
   const isOnlySaapshidi = !isSuperAdmin && canSaapshidi && !canDandiya && !canEvents && !canFinance;
   if (isOnlySaapshidi && currentPath === '/admin') {
     return <Navigate to="/admin/saapshidi-desk" replace />;
   }
 
-// Dynamic Nav Items (Jya module chi permission ahe tech menu madhe distil)
+  // साइडबारसाठी सर्व नव आयटम्स (डेस्कटॉप आणि मोबाईल ड्रॉवरसाठी पूर्ण यादी)
   const navItems = [
     ...(!isOnlyDandiya && !isOnlySaapshidi ? [{
       to: '/admin',
@@ -76,7 +80,6 @@ export default function AdminLayout() {
       icon: LayoutDashboard,
     }] : []),
 
-    // Navin Saapshidi Desk Item
     ...(canSaapshidi ? [{
       to: '/admin/saapshidi-desk',
       labelMr: 'सापशिडी डेस्क',
@@ -112,8 +115,15 @@ export default function AdminLayout() {
     authService.logout();
   };
 
+  const handleDeskSelect = (targetPath) => {
+    setDeskDrawerOpen(false);
+    navigate(targetPath);
+  };
+
+  const isDeskActive = currentPath.includes('/admin/dandiya-desk') || currentPath.includes('/admin/saapshidi-desk');
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans pb-16 md:pb-0">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans pb-20 md:pb-0">
       
       {/* 1. Mobile Top Bar */}
       <header className="md:hidden sticky top-0 z-40 bg-[#0F172A] text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 shadow-md">
@@ -131,8 +141,9 @@ export default function AdminLayout() {
 
         <div className="flex items-center gap-2">
           <button 
+            type="button"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 text-slate-300 hover:text-white rounded-lg bg-slate-800/80 active:scale-95 transition"
+            className="p-2 text-slate-300 hover:text-white rounded-lg bg-slate-800/80 active:scale-95 transition cursor-pointer"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -173,7 +184,11 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
+            <button 
+              type="button"
+              onClick={() => setSidebarOpen(false)} 
+              className="md:hidden text-slate-400 hover:text-white p-1 cursor-pointer"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -191,7 +206,7 @@ export default function AdminLayout() {
             </div>
           </div>
 
-          {/* Nav Items */}
+          {/* Nav Items (सर्व मेन्यू यादी साइडबारमध्ये कायम राहील) */}
           <nav className="px-2.5 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -219,16 +234,18 @@ export default function AdminLayout() {
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800 space-y-1.5">
           <button
+            type="button"
             onClick={() => navigate('/')}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>वेबसाईटवर जा</span>
           </button>
 
           <button
+            type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10 transition"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10 transition cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>लॉगआउट</span>
@@ -236,33 +253,126 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* 4. Main Content */}
+      {/* 4. Main Content Area */}
       <main className="flex-1 min-w-0 overflow-y-auto">
         <Outlet />
       </main>
 
-      {/* 5. Mobile Bottom Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0F172A]/95 backdrop-blur-md border-t border-slate-800 flex items-center justify-around py-1 px-1 shadow-2xl">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = item.end 
-            ? location.pathname === item.to || location.pathname === `${item.to}/`
-            : location.pathname.startsWith(item.to);
+      {/* 5. Mobile Event Desk Select Popup Drawer */}
+      {deskDrawerOpen && (
+        <div 
+          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs"
+          onClick={() => setDeskDrawerOpen(false)}
+        >
+          <div 
+            className="absolute bottom-16 left-3 right-3 bg-[#0F172A] border border-amber-400/30 rounded-3xl p-4 shadow-2xl space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" />
+                <span>इव्हेंट डेस्क निवडा</span>
+              </span>
+              <button 
+                type="button" 
+                onClick={() => setDeskDrawerOpen(false)}
+                className="text-slate-400 hover:text-white p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg text-[9px] font-bold transition ${
-                isActive ? 'text-amber-400' : 'text-slate-400'
-              }`}
-            >
-              <Icon className={`w-4 h-4 mb-0.5 ${isActive ? 'scale-110 text-amber-400' : ''}`} />
-              <span className="truncate max-w-[70px]">{item.labelMr}</span>
-            </NavLink>
-          );
-        })}
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              {/* दांडिया डेस्क */}
+              {canDandiya && (
+                <button
+                  type="button"
+                  onClick={() => handleDeskSelect('/admin/dandiya-desk')}
+                  className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 hover:border-amber-400 transition active:scale-95 cursor-pointer"
+                >
+                  <Ticket className="w-6 h-6 text-amber-400 mb-1" />
+                  <span className="text-xs font-black text-white">दांडिया डेस्क</span>
+                  <span className="text-[9px] text-slate-400">पास व नोंदणी</span>
+                </button>
+              )}
+
+              {/* सापशिडी डेस्क */}
+              {canSaapshidi && (
+                <button
+                  type="button"
+                  onClick={() => handleDeskSelect('/admin/saapshidi-desk')}
+                  className="flex flex-col items-center justify-center p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 hover:border-amber-400 transition active:scale-95 cursor-pointer"
+                >
+                  <Trophy className="w-6 h-6 text-emerald-400 mb-1" />
+                  <span className="text-xs font-black text-white">सापशिडी डेस्क</span>
+                  <span className="text-[9px] text-slate-400">स्पर्धा व स्कोअर</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Mobile Bottom Navigation (फक्त ४ मुख्य पर्याय) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0F172A]/95 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around py-2 px-2 shadow-2xl safe-area-pb">
+        
+        {/* १. डॅशबोर्ड */}
+        <NavLink
+          to="/admin"
+          end
+          onClick={() => setDeskDrawerOpen(false)}
+          className={({ isActive }) => `flex flex-col items-center justify-center py-0.5 px-2 rounded-lg text-[9px] font-bold transition ${
+            isActive ? 'text-amber-400' : 'text-slate-400'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5 mb-0.5" />
+          <span>डॅशबोर्ड</span>
+        </NavLink>
+
+        {/* २. संयुक्त इव्हेंट डेस्क (दांडिया + सापशिडी) */}
+        {(canDandiya || canSaapshidi) && (
+          <button
+            type="button"
+            onClick={() => setDeskDrawerOpen(prev => !prev)}
+            className={`flex flex-col items-center justify-center py-0.5 px-2 rounded-lg text-[9px] font-bold transition cursor-pointer ${
+              isDeskActive || deskDrawerOpen ? 'text-amber-400 font-black' : 'text-slate-400'
+            }`}
+          >
+            <Layers className="w-5 h-5 mb-0.5" />
+            <span className="flex items-center gap-0.5">
+              डेस्क <ChevronUp className={`w-2.5 h-2.5 transition-transform ${deskDrawerOpen ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+        )}
+
+        {/* ३. इव्हेंट्स व फोटो */}
+        {canEvents && (
+          <NavLink
+            to="/admin/initiatives"
+            onClick={() => setDeskDrawerOpen(false)}
+            className={({ isActive }) => `flex flex-col items-center justify-center py-0.5 px-2 rounded-lg text-[9px] font-bold transition ${
+              isActive ? 'text-amber-400' : 'text-slate-400'
+            }`}
+          >
+            <ImageIcon className="w-5 h-5 mb-0.5" />
+            <span>इव्हेंट्स व फोटो</span>
+          </NavLink>
+        )}
+
+        {/* ४. जमा-खर्च */}
+        {canFinance && (
+          <NavLink
+            to="/admin/finance"
+            onClick={() => setDeskDrawerOpen(false)}
+            className={({ isActive }) => `flex flex-col items-center justify-center py-0.5 px-2 rounded-lg text-[9px] font-bold transition ${
+              isActive ? 'text-amber-400' : 'text-slate-400'
+            }`}
+          >
+            <Wallet className="w-5 h-5 mb-0.5" />
+            <span>जमा-खर्च</span>
+          </NavLink>
+        )}
+
       </nav>
 
     </div>

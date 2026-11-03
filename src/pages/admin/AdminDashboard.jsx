@@ -42,120 +42,122 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 font-sans">
+    <div className="p-3 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans">
       
       {/* Title */}
-      <div className="pt-2 sm:pt-0">
-        <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
+      <div className="pt-1 sm:pt-0">
+        <h1 className="text-lg sm:text-3xl font-black text-slate-900 tracking-tight">
           व्यवस्थापन डॅशबोर्ड (Admin Panel)
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+        <p className="text-[11px] sm:text-sm text-slate-500 mt-0.5">
           शेलारमामा फाऊंडेशन सिस्टीम ओव्हरव्ह्यू आणि चालू स्थिती.
         </p>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Active Users */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>सक्रिय प्रतिनिधी / युजर्स</span>
-            <Users className="w-4 h-4 text-slate-400" />
+      {/* KPI Cards: Mobile var ekach line madhe (grid-cols-3) aani Desktop var same grid-cols-3 */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        
+        {/* 1. Active Users */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">
+            <span className="truncate">युजर्स</span>
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 shrink-0 ml-1" />
           </div>
-          <div className="text-3xl font-black text-slate-900">
+          <div className="text-lg sm:text-3xl font-black text-slate-900 tracking-tight">
             {loading ? '...' : userCount}
           </div>
-          <span className="text-[11px] text-emerald-600 font-semibold mt-1 inline-block">
-            सर्व भूमिका सक्रिय
+          <span className="text-[9px] sm:text-[11px] text-emerald-600 font-semibold mt-1 truncate block">
+            सर्व सक्रिय
           </span>
         </div>
 
-        {/* Total Events */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>एकूण उपक्रम व इव्हेंट्स</span>
-            <Calendar className="w-4 h-4 text-emerald-500" />
+        {/* 2. Total Events */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">
+            <span className="truncate">उपक्रम</span>
+            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0 ml-1" />
           </div>
-          <div className="text-3xl font-black text-emerald-600">
+          <div className="text-lg sm:text-3xl font-black text-emerald-600 tracking-tight">
             {totalEvents}
           </div>
-          <span className="text-[11px] text-slate-400 font-semibold mt-1 inline-block">
-            वार्षिक आणि आगामी
+          <span className="text-[9px] sm:text-[11px] text-slate-400 font-semibold mt-1 truncate block">
+            इव्हेंट्स
           </span>
         </div>
 
-        {/* Live Finance Balance */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>जमा-खर्च शिल्लक</span>
-            <Wallet className="w-4 h-4 text-amber-500" />
+        {/* 3. Live Finance Balance */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-5 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">
+            <span className="truncate">शिल्लक</span>
+            <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0 ml-1" />
           </div>
-          <div className="text-3xl font-black text-amber-600">
-            {loading ? '...' : `₹ ${Number(netBalance).toLocaleString('en-IN')}`}
+          <div className="text-sm sm:text-3xl font-black text-amber-600 tracking-tight truncate">
+            {loading ? '...' : `₹${Number(netBalance).toLocaleString('en-IN')}`}
           </div>
-          <span className="text-[11px] text-emerald-600 font-semibold mt-1 inline-block">
-            थेट ताळेबंद सक्रिय
+          <span className="text-[9px] sm:text-[11px] text-emerald-600 font-semibold mt-1 truncate block">
+            थेट ताळेबंद
           </span>
         </div>
+
       </div>
 
       {/* Form On/Off Controller Panel */}
       <FormControllerCard isSuperAdmin={isSuperAdmin} />
 
       {/* Quick Action Navigation Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
         <Link 
           to="/admin/finance"
-          className="bg-white border border-slate-200 hover:border-heritage-burgundy rounded-2xl p-5 shadow-sm transition flex items-center justify-between group"
+          className="bg-white border border-slate-200 hover:border-heritage-burgundy rounded-2xl p-3.5 sm:p-5 shadow-2xs transition flex items-center justify-between group active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 text-heritage-burgundy flex items-center justify-center">
-              <IndianRupee className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-50 text-heritage-burgundy flex items-center justify-center shrink-0">
+              <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900 group-hover:text-heritage-burgundy transition">
+              <h3 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-heritage-burgundy transition">
                 हिशोब व वित्त व्यवस्थापन
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">जमा-खर्च लेजर व ॲडव्हान्स ट्रॅकिंग</p>
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">जमा-खर्च लेजर व ॲडव्हान्स ट्रॅकिंग</p>
             </div>
           </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-heritage-burgundy transition" />
+          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-heritage-burgundy transition shrink-0 ml-2" />
         </Link>
 
         <Link 
           to="/admin/initiatives"
-          className="bg-white border border-slate-200 hover:border-heritage-burgundy rounded-2xl p-5 shadow-sm transition flex items-center justify-between group"
+          className="bg-white border border-slate-200 hover:border-heritage-burgundy rounded-2xl p-3.5 sm:p-5 shadow-2xs transition flex items-center justify-between group active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-heritage-burgundy/10 text-heritage-burgundy flex items-center justify-center">
-              <Layers className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-heritage-burgundy/10 text-heritage-burgundy flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900 group-hover:text-heritage-burgundy transition">
+              <h3 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-heritage-burgundy transition">
                 इव्हेंट्स व फोटो गॅलरी
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">वर्षानिहाय फोटो व माहिती अपडेट करा</p>
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">वर्षानिहाय फोटो व माहिती अपडेट करा</p>
             </div>
           </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-heritage-burgundy transition" />
+          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-heritage-burgundy transition shrink-0 ml-2" />
         </Link>
 
         <Link 
           to="/admin/users"
-          className="bg-white border border-slate-200 hover:border-heritage-burgundy rounded-2xl p-5 shadow-sm transition flex items-center justify-between group"
+          className="bg-white border border-slate-200 hover:border-heritage-burgundy rounded-2xl p-3.5 sm:p-5 shadow-2xs transition flex items-center justify-between group active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900 group-hover:text-heritage-burgundy transition">
+              <h3 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-heritage-burgundy transition">
                 प्रतिनिधी व अधिकार
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">युजर्सच्या परवानग्या नियंत्रित करा</p>
+              <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">युजर्सच्या परवानग्या नियंत्रित करा</p>
             </div>
           </div>
-          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-heritage-burgundy transition" />
+          <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-heritage-burgundy transition shrink-0 ml-2" />
         </Link>
       </div>
 

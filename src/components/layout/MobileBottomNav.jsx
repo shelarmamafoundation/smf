@@ -7,6 +7,7 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === '/';
+  const isAbout = location.pathname === '/about';
 
   const handleNav = (e, targetId) => {
     e.preventDefault();
@@ -18,6 +19,12 @@ export default function MobileBottomNav() {
         navigate('/');
         setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
       }
+      return;
+    }
+
+    if (targetId === 'about') {
+      navigate('/about');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -38,13 +45,15 @@ export default function MobileBottomNav() {
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1A0308]/95 backdrop-blur-xl border-t border-heritage-gold/30 px-6 py-2.5 flex justify-between items-center z-50 text-white shadow-2xl">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1A0308]/95 backdrop-blur-xl border-t border-heritage-gold/30 px-6 py-2 flex justify-between items-center z-40 text-white shadow-2xl safe-area-pb">
       
       {/* 1. मुख्य */}
       <button 
         type="button"
         onClick={(e) => handleNav(e, 'top')} 
-        className="flex flex-col items-center gap-1 text-heritage-gold hover:text-white transition cursor-pointer"
+        className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+          isHome ? 'text-heritage-gold' : 'text-gray-300 hover:text-white'
+        }`}
       >
         <Home className="w-5 h-5" />
         <span className="text-[10px] font-bold">मुख्य</span>
@@ -70,11 +79,13 @@ export default function MobileBottomNav() {
         <span className="text-[10px] font-medium">उपक्रम</span>
       </button>
 
-      {/* 4. ओळख */}
+      {/* 4. ओळख (Dedicated /about Navigation) */}
       <button 
         type="button"
         onClick={(e) => handleNav(e, 'about')} 
-        className="flex flex-col items-center gap-1 text-gray-300 hover:text-heritage-gold transition cursor-pointer"
+        className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+          isAbout ? 'text-heritage-gold' : 'text-gray-300 hover:text-heritage-gold'
+        }`}
       >
         <Award className="w-5 h-5" />
         <span className="text-[10px] font-medium">ओळख</span>

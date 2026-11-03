@@ -1,16 +1,17 @@
-//src\pages\admin\AdminInitiativesPage.jsx
+// src/pages/admin/AdminInitiativesPage.jsx
 import React, { useState, useEffect } from 'react';
 import { 
   Layers, Calendar, UploadCloud, Trash2, Save, 
   Loader2, Sparkles, CheckCircle2, AlertCircle, Plus, 
-  X, ArrowLeft, ArrowRight, Tag, Filter, Wand2, Users
+  X, Tag, Filter, Wand2, Users, GripVertical
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { INITIATIVES_DATA } from '../../data/initiativesData';
 import { uploadToImgBB } from '../../services/imageUploadService';
 import { initiativeService } from '../../services/initiativeService';
 import AdminCommitteeManager from '../../components/admin/committee/AdminCommitteeManager';
 
-const MAX_SLOTS = 30;
+const MAX_SLOTS_PER_DAY = 30;
 
 export default function AdminInitiativesPage() {
   const [allInitiatives, setAllInitiatives] = useState(INITIATIVES_DATA);
@@ -24,7 +25,7 @@ export default function AdminInitiativesPage() {
 
   const [headlineMr, setHeadlineMr] = useState('');
   const [descriptionMr, setDescriptionMr] = useState('');
-  const [slots, setSlots] = useState([]); // Max 30 slots
+  const [slots, setSlots] = useState([]); // All slots across days
 
   // Dynamic Days / Sub-events state
   const [eventDays, setEventDays] = useState([]); 
@@ -34,7 +35,9 @@ export default function AdminInitiativesPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
-  const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
+
+  // Drag and Drop State
+  const [draggedSlotNo, setDraggedSlotNo] = useState(null);
 
   // Committee Modal State
   const [showCommitteeModal, setShowCommitteeModal] = useState(false);
@@ -70,7 +73,12 @@ export default function AdminInitiativesPage() {
 
   const handleEndDateChange = (newDate) => {
     if (new Date(newDate) < new Date(startDate)) {
-      alert('समाप्ती तारीख (To Date) ही सुरुवात तारखेच्या (From Date) नंतरची असावी!');
+      Swal.fire({
+        icon: 'warning',
+        title: 'चुकीची तारीख!',
+        text: 'समाप्ती तारीख (To Date) ही सुरुवात तारखेच्या नंतरची असावी.',
+        confirmButtonColor: '#580A1A'
+      });
       return;
     }
     setEndDate(newDate);
@@ -83,7 +91,6 @@ export default function AdminInitiativesPage() {
 
   const loadYearData = async () => {
     setLoading(true);
-    setStatusMsg({ type: '', text: '' });
     try {
       const data = await initiativeService.getYearGallery(selectedInitiative.id, detectedYear);
       if (data) {
@@ -101,6 +108,12 @@ export default function AdminInitiativesPage() {
       }
     } catch (err) {
       console.error(err);
+      Swal.fire({
+        icon: 'error',
+        title: 'डेटा लोड त्रुटी',
+        text: err.message || 'गॅलरी डेटा मिळवण्यात अडचण आली.',
+        confirmButtonColor: '#580A1A'
+      });
     } finally {
       setLoading(false);
     }
@@ -118,7 +131,12 @@ export default function AdminInitiativesPage() {
     if (diffDays <= 0) return;
 
     if (diffDays > 30) {
-      alert('दिवसांची संख्या ३० पेक्षा जास्त असू शकत नाही.');
+      Swal.fire({
+        icon: 'warning',
+        title: 'मर्यादा ओलांडली',
+        text: 'दिवसांची संख्या एका वेळी ३० पेक्षा जास्त असू शकत नाही.',
+        confirmButtonColor: '#580A1A'
+      });
       return;
     }
 
@@ -136,15 +154,26 @@ export default function AdminInitiativesPage() {
     }
 
     setEventDays(generated);
-    setStatusMsg({ type: 'success', text: `${diffDays} दिवस आपोआप तयार झाले आहेत!` });
+    Swal.fire({
+      icon: 'success',
+      title: 'दिवस तयार झाले!',
+      text: `${diffDays} दिवस आपोआप तयार झाले आहेत.`,
+      timer: 1500,
+      showConfirmButton: false
+    });
   };
 
-  // Add Dynamic Event Day manually
+  // मॅन्युअली नवीन दिवस जोडणे
   const handleAddDay = () => {
     const cleanTitle = newDayTitle.trim();
     if (!cleanTitle) return;
     if (eventDays.some(d => d.title.toLowerCase() === cleanTitle.toLowerCase())) {
-      alert('हा दिवस / विभाग आधीच जोडला आहे!');
+      Swal.fire({
+        icon: 'info',
+        title: 'विभाग उपलब्ध आहे',
+        text: 'हा दिवस / विभाग आधीच जोडला आहे.',
+        confirmButtonColor: '#580A1A'
+      });
       return;
     }
     const newDayObj = {
@@ -156,75 +185,172 @@ export default function AdminInitiativesPage() {
     setNewDayTitle('');
   };
 
-  // Remove Dynamic Event Day
+  // दिवस काढून टाकणे
   const handleRemoveDay = (dayId, dayTitle) => {
     setEventDays(prev => prev.filter(d => d.id !== dayId));
     setSlots(prev => prev.map(s => s.dayTag === dayTitle ? { ...s, dayTag: '' } : s));
     if (activeDayFilter === dayTitle) setActiveDayFilter('ALL');
   };
 
-  // Batch Upload to ImgBB (Up to 30 slots)
+  // सध्या निवडलेल्या दिवसातील फोटो (Current Day Slots)
+  const currentDaySlots = activeDayFilter === 'ALL'
+    ? slots
+    : slots.filter(s => s.dayTag === activeDayFilter);
+
+  // निवडलेल्या दिवसात किती जागा शिल्लक आहे (कमाल ३० फोटो प्रति दिवस)
+  const currentDayPhotoCount = currentDaySlots.length;
+  const availableSlotsInActiveView = Math.max(0, MAX_SLOTS_PER_DAY - currentDayPhotoCount);
+
+  // Batch Upload to ImgBB (प्रति दिवस ३० फोटो मर्यादा)
   const handleBatchUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const availableCount = MAX_SLOTS - slots.length;
-    if (availableCount <= 0) {
-      setStatusMsg({ type: 'error', text: `कमाल ${MAX_SLOTS} फोटो स्लॉट आधीच भरले आहेत!` });
+    if (availableSlotsInActiveView <= 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'मर्यादा पूर्ण!',
+        text: activeDayFilter === 'ALL'
+          ? `या वर्षासाठी कमाल ${MAX_SLOTS_PER_DAY} फोटो मर्यादा पूर्ण झाली आहे.`
+          : `"${activeDayFilter}" या दिवसासाठी कमाल ३० फोटो स्लॉट आधीच भरले आहेत!`,
+        confirmButtonColor: '#580A1A'
+      });
       return;
     }
 
-    const filesToUpload = files.slice(0, availableCount);
+    const filesToUpload = files.slice(0, availableSlotsInActiveView);
     setUploadProgress({ current: 0, total: filesToUpload.length });
 
-    const newSlots = [...slots];
-    let nextSlotNo = 1;
+    const updatedAllSlots = [...slots];
+    const defaultTag = activeDayFilter !== 'ALL' ? activeDayFilter : (eventDays[0]?.title || '');
 
     for (let i = 0; i < filesToUpload.length; i++) {
       setUploadProgress({ current: i + 1, total: filesToUpload.length });
-      while (newSlots.some(s => s.slotNo === nextSlotNo) && nextSlotNo <= MAX_SLOTS) {
-        nextSlotNo++;
-      }
 
       try {
         const res = await uploadToImgBB(filesToUpload[i]);
-        newSlots.push({
-          slotNo: nextSlotNo,
+        
+        // त्या दिवसातील पुढचा क्रम मिळवणे
+        const existingInThisDay = updatedAllSlots.filter(s => s.dayTag === defaultTag);
+        const nextOrderInDay = existingInThisDay.length + 1;
+
+        updatedAllSlots.push({
+          slotNo: updatedAllSlots.length + 1,
+          orderInDay: nextOrderInDay,
           url: res.url,
           thumbUrl: res.thumbUrl || res.url,
-          caption: `फोटो ${nextSlotNo}`,
-          dayTag: activeDayFilter !== 'ALL' ? activeDayFilter : ''
+          caption: `फोटो ${nextOrderInDay}`,
+          dayTag: defaultTag
         });
-        nextSlotNo++;
       } catch (err) {
         console.error('File upload error:', err);
       }
     }
 
-    setSlots(newSlots.sort((a, b) => a.slotNo - b.slotNo));
+    setSlots(updatedAllSlots);
     setUploadProgress(null);
-    setStatusMsg({ type: 'success', text: `${filesToUpload.length} फोटो यशस्वीरीत्या कॉम्प्रेस व अपलोड झाले!` });
+    Swal.fire({
+      icon: 'success',
+      title: 'फोटो अपलोड झाले!',
+      text: `${filesToUpload.length} फोटो यशस्वीरित्या कॉम्प्रेस व अपलोड झाले.`,
+      timer: 1500,
+      showConfirmButton: false
+    });
     e.target.value = '';
   };
 
-  // Reorder Photos
-  const handleMovePhoto = (index, direction) => {
-    const targetIndex = direction === 'left' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= slots.length) return;
+  // १. डायरेक्ट नंबर निवडून क्रम बदलणे (Direct Jump / Move to Any Rank)
+  const handleDirectOrderChange = (currentSlot, targetOrderNum) => {
+    const targetRank = Number(targetOrderNum);
+    if (!targetRank || targetRank < 1) return;
 
-    const updated = [...slots];
-    const temp = updated[index];
-    updated[index] = updated[targetIndex];
-    updated[targetIndex] = temp;
+    // सध्याच्या दिवसातील किंवा सर्व फिल्टरमधील लिस्ट
+    const activeList = [...currentDaySlots];
+    const currentIndex = activeList.findIndex(s => s.slotNo === currentSlot.slotNo);
+    if (currentIndex === -1) return;
 
-    const renumbered = updated.map((s, idx) => ({ ...s, slotNo: idx + 1 }));
-    setSlots(renumbered);
+    const [movedItem] = activeList.splice(currentIndex, 1);
+    activeList.splice(targetRank - 1, 0, movedItem);
+
+    // रि-नंबरिंग करणे
+    const updatedWithOrder = activeList.map((item, idx) => ({
+      ...item,
+      orderInDay: idx + 1
+    }));
+
+    // मूळ slots स्टेटमध्ये रीप्लेस करणे
+    if (activeDayFilter === 'ALL') {
+      const fullRenumbered = updatedWithOrder.map((s, idx) => ({ ...s, slotNo: idx + 1 }));
+      setSlots(fullRenumbered);
+    } else {
+      const remainingOthers = slots.filter(s => s.dayTag !== activeDayFilter);
+      setSlots([...remainingOthers, ...updatedWithOrder]);
+    }
   };
 
-  const handleRemoveSlot = (slotNo) => {
-    const remaining = slots.filter(s => s.slotNo !== slotNo);
-    const renumbered = remaining.map((s, idx) => ({ ...s, slotNo: idx + 1 }));
-    setSlots(renumbered);
+  // २. ड्रॅग अँड ड्रॉप हँडलर्स (Drag & Drop Reordering)
+  const handleDragStart = (e, slotNo) => {
+    setDraggedSlotNo(slotNo);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetSlotNo) => {
+    e.preventDefault();
+    if (!draggedSlotNo || draggedSlotNo === targetSlotNo) return;
+
+    const activeList = [...currentDaySlots];
+    const fromIndex = activeList.findIndex(s => s.slotNo === draggedSlotNo);
+    const toIndex = activeList.findIndex(s => s.slotNo === targetSlotNo);
+
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [draggedItem] = activeList.splice(fromIndex, 1);
+    activeList.splice(toIndex, 0, draggedItem);
+
+    const updatedList = activeList.map((item, idx) => ({
+      ...item,
+      orderInDay: idx + 1
+    }));
+
+    if (activeDayFilter === 'ALL') {
+      const fullRenumbered = updatedList.map((s, idx) => ({ ...s, slotNo: idx + 1 }));
+      setSlots(fullRenumbered);
+    } else {
+      const remainingOthers = slots.filter(s => s.dayTag !== activeDayFilter);
+      setSlots([...remainingOthers, ...updatedList]);
+    }
+    setDraggedSlotNo(null);
+  };
+
+  // फोटो काढून टाकणे
+  const handleRemoveSlot = async (slotNo) => {
+    const result = await Swal.fire({
+      title: 'फोटो काढायचा का?',
+      text: 'हा फोटो गॅलरीमधून काढून टाकला जाईल.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'होय, काढा',
+      cancelButtonText: 'रद्द करा'
+    });
+
+    if (result.isConfirmed) {
+      const remaining = slots.filter(s => s.slotNo !== slotNo);
+      const renumbered = remaining.map((s, idx) => ({ ...s, slotNo: idx + 1 }));
+      setSlots(renumbered);
+      Swal.fire({
+        icon: 'success',
+        title: 'फोटो काढला!',
+        timer: 1000,
+        showConfirmButton: false
+      });
+    }
   };
 
   const handleCaptionChange = (slotNo, text) => {
@@ -235,10 +361,9 @@ export default function AdminInitiativesPage() {
     setSlots(prev => prev.map(s => s.slotNo === slotNo ? { ...s, dayTag: selectedDay } : s));
   };
 
-  // Save Year Data with Range
+  // सर्व माहिती सेव्ह करणे
   const handleSave = async () => {
     setSaving(true);
-    setStatusMsg({ type: '', text: '' });
     try {
       await initiativeService.saveYearGallery(selectedInitiative.id, detectedYear, {
         startDate,
@@ -249,23 +374,26 @@ export default function AdminInitiativesPage() {
         slots,
         eventDays
       });
-      setStatusMsg({ 
-        type: 'success', 
-        text: `वर्ष ${detectedYear} ची माहिती (${startDate} ते ${endDate}), ${eventDays.length} दिवस व ${slots.length} फोटो यशस्वीरित्या सेव्ह झाले!` 
+
+      Swal.fire({
+        icon: 'success',
+        title: 'यशस्वीरित्या सेव्ह झाले!',
+        text: `वर्ष ${detectedYear} ची माहिती, ${eventDays.length} दिवस आणि ${slots.length} फोटो जतन केले.`,
+        confirmButtonColor: '#580A1A'
       });
     } catch (err) {
-      setStatusMsg({ type: 'error', text: err.message || 'त्रुटी आली.' });
+      Swal.fire({
+        icon: 'error',
+        title: 'सेव्ह करताना त्रुटी!',
+        text: err.message || 'फायरबेसमध्ये डेटा सेव्ह होऊ शकला नाही.',
+        confirmButtonColor: '#580A1A'
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  // Filtered slots for gallery view
-  const visibleSlots = activeDayFilter === 'ALL' 
-    ? slots 
-    : slots.filter(s => s.dayTag === activeDayFilter);
-
-  // Create New Initiative Handler
+  // नवीन उपक्रम तयार करणे
   const handleCreateInitiative = async (e) => {
     e.preventDefault();
     if (!newInitData.titleMr.trim()) return;
@@ -291,7 +419,13 @@ export default function AdminInitiativesPage() {
     setSelectedInitiative(newEntry);
     setShowAddModal(false);
     setNewInitData({ titleMr: '', categoryMr: '', badgeMr: 'नवीन उपक्रम', descMr: '', image: '' });
-    setStatusMsg({ type: 'success', text: `नवीन उपक्रम "${newEntry.titleMr}" तयार झाला!` });
+
+    Swal.fire({
+      icon: 'success',
+      title: 'नवीन उपक्रम तयार झाला!',
+      text: `"${newEntry.titleMr}" यशस्वीरित्या जोडला आहे.`,
+      confirmButtonColor: '#580A1A'
+    });
   };
 
   const handleCoverUpload = async (file) => {
@@ -301,72 +435,67 @@ export default function AdminInitiativesPage() {
       const res = await uploadToImgBB(file);
       setNewInitData(prev => ({ ...prev, image: res.url }));
     } catch (err) {
-      alert(err.message || 'कव्हर फोटो अपलोड अयशस्वी.');
+      Swal.fire({
+        icon: 'error',
+        title: 'अपलोड अयशस्वी!',
+        text: err.message || 'कव्हर फोटो अपलोड होऊ शकला नाही.',
+        confirmButtonColor: '#580A1A'
+      });
     } finally {
       setCoverUploading(false);
     }
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 font-sans">
+    <div className="p-3 sm:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-5">
+      {/* १. हेडर विभाग */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200 pb-3 sm:pb-5">
         <div>
-          <div className="flex items-center gap-2 text-heritage-crimson text-xs font-bold uppercase tracking-wider mb-1">
+          <div className="hidden sm:flex items-center gap-2 text-heritage-crimson text-xs font-bold uppercase tracking-wider mb-1">
             <Layers className="w-4 h-4" />
-            <span>इव्हेंट व्यवस्थापन व गॅलरी (कालावधी, ३० फोटो & दिवस व्यवस्थापन)</span>
+            <span>इव्हेंट व्यवस्थापन व दिवसनिहाय गॅलरी</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-heritage-burgundy">
-            प्रमुख उपक्रम (Year & Date Range Manager)
+          <h1 className="text-lg sm:text-3xl font-black text-heritage-burgundy tracking-tight">
+            प्रमुख उपक्रम (Year & Gallery)
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-            कार्यक्रमाची तारीख (From - To), दिवस/विभाग जोडा, ३० फोटोंचे व्यवस्थापन करा आणि क्रमाने लावा.
+          <p className="hidden sm:block text-xs sm:text-sm text-gray-500 mt-0.5">
+            कार्यक्रमाची तारीख (From - To), दिवस जोडा आणि प्रत्येक दिवसाचे कमाल ३० फोटो क्रमबद्ध करा.
           </p>
         </div>
 
-        {/* Action Buttons: समिती व्यवस्थापन आणि नवीन उपक्रम */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {/* ॲक्शन बटणे */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
           <button
             type="button"
             onClick={() => setShowCommitteeModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold shadow-md transition active:scale-95 cursor-pointer border border-amber-500/30"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 text-white text-[11px] sm:text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
           >
-            <Users className="w-4 h-4 text-amber-200" />
-            <span>👥 संयोजन समिती व्यवस्थापन</span>
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200 shrink-0" />
+            <span className="truncate">संयोजन समिती</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-heritage-burgundy hover:bg-heritage-crimson text-white text-xs font-bold shadow-md transition cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-heritage-burgundy hover:bg-heritage-crimson text-white text-[11px] sm:text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>नवीन उपक्रम जोडा</span>
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">नवीन उपक्रम</span>
           </button>
         </div>
       </div>
 
-      {/* Status Msg */}
-      {statusMsg.text && (
-        <div className={`p-4 rounded-2xl text-xs font-bold flex items-center gap-2 ${
-          statusMsg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'
-        }`}>
-          {statusMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
-          <span>{statusMsg.text}</span>
-        </div>
-      )}
-
-      {/* Upkram Selection Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+      {/* उपक्रम निवड चिप्स */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {allInitiatives.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => setSelectedInitiative(item)}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer border ${
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border shrink-0 ${
               selectedInitiative.id === item.id
-                ? 'bg-heritage-burgundy text-white border-heritage-burgundy shadow-sm'
+                ? 'bg-heritage-burgundy text-white border-heritage-burgundy shadow-xs'
                 : 'bg-white text-gray-700 border-gray-200 hover:border-heritage-gold'
             }`}
           >
@@ -375,142 +504,141 @@ export default function AdminInitiativesPage() {
         ))}
       </div>
 
-      {/* Main Year Editor */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm space-y-6">
+      {/* मुख्य एडिटर कार्ड */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-gray-200 shadow-xs space-y-4 sm:space-y-6">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+        {/* उपक्रम नाव आणि वर्ष */}
+        <div className="flex flex-row items-center justify-between gap-2 border-b border-gray-100 pb-3">
           <div>
-            <h2 className="text-lg font-black text-heritage-burgundy flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black text-heritage-burgundy flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-heritage-gold" />
               <span>{selectedInitiative.titleMr}</span>
             </h2>
-            <span className="text-xs text-gray-400 font-medium">{selectedInitiative.categoryMr}</span>
+            <span className="text-[10px] sm:text-xs text-gray-400 font-medium">{selectedInitiative.categoryMr}</span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
-              <Calendar className="w-4 h-4 text-amber-600" />
-              <span>सध्याचे वर्ष: {detectedYear}</span>
+          <div className="flex items-center gap-1.5">
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[10px] sm:text-xs font-bold">
+              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+              <span>{detectedYear}</span>
             </div>
 
             <button
               type="button"
               onClick={() => setShowCommitteeModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition border border-amber-300 cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] sm:text-xs font-bold transition border border-amber-300 cursor-pointer"
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>या वर्षाची समिती बदला</span>
+              <Users className="w-3 h-3" />
+              <span className="hidden sm:inline">या वर्षाची समिती बदला</span>
+              <span className="sm:hidden">समिती</span>
             </button>
           </div>
         </div>
 
         {loading ? (
-          <div className="py-20 text-center text-gray-400 text-xs flex items-center justify-center gap-2">
+          <div className="py-16 text-center text-gray-400 text-xs flex items-center justify-center gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-heritage-burgundy" />
             <span>वर्ष {detectedYear} चा डेटा लोड होत आहे...</span>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             
-            {/* From Date, To Date, Headline & Description */}
-            <div className="space-y-4 bg-gray-50/60 p-5 rounded-2xl border border-gray-200/80">
-              
-              {/* Date Range Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+            {/* २. तारीख व मथळा (मोबाईलवर From-To शेजारी) */}
+            <div className="space-y-3 bg-gray-50/70 p-3.5 sm:p-5 rounded-2xl border border-gray-200/80">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                    सुरुवात तारीख (From Date)*
+                  <label className="block text-[10px] sm:text-[11px] font-bold text-gray-700 uppercase mb-1">
+                    सुरुवात तारीख (From)*
                   </label>
                   <input 
                     type="date"
                     value={startDate}
                     onChange={(e) => handleStartDateChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold focus:border-heritage-burgundy outline-none bg-white"
+                    className="w-full px-2.5 py-1.5 sm:py-2 rounded-xl border border-gray-300 text-xs font-bold focus:border-heritage-burgundy outline-none bg-white"
                   />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">यावरून वर्ष निश्चित होते</span>
+                  <span className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5 block truncate">वर्ष निश्चित होते</span>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                    समाप्ती तारीख (To Date)*
+                  <label className="block text-[10px] sm:text-[11px] font-bold text-gray-700 uppercase mb-1">
+                    समाप्ती तारीख (To)*
                   </label>
                   <input 
                     type="date"
                     min={startDate}
                     value={endDate}
                     onChange={(e) => handleEndDateChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold focus:border-heritage-burgundy outline-none bg-white"
+                    className="w-full px-2.5 py-1.5 sm:py-2 rounded-xl border border-gray-300 text-xs font-bold focus:border-heritage-burgundy outline-none bg-white"
                   />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">एकाच दिवसासाठी दोन्ही समान ठेवा</span>
+                  <span className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5 block truncate">कालावधी शेवट</span>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                <div className="col-span-2">
+                  <label className="block text-[10px] sm:text-[11px] font-bold text-gray-700 uppercase mb-1">
                     ठळक मथळा / शीर्षक (Headline)
                   </label>
                   <input 
                     type="text"
-                    placeholder="उदा. २५,००० भाविकांच्या उपस्थितीत ऐतिहासिक सोहळा संपन्न..."
+                    placeholder="उदा. २५,००० भाविकांच्या उपस्थितीत ऐतिहासिक सोहळा..."
                     value={headlineMr}
                     onChange={(e) => setHeadlineMr(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-semibold focus:border-heritage-burgundy outline-none bg-white"
+                    className="w-full px-3 py-1.5 sm:py-2 rounded-xl border border-gray-300 text-xs font-semibold focus:border-heritage-burgundy outline-none bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                <label className="block text-[10px] sm:text-xs font-bold text-gray-700 uppercase mb-1">
                   सविस्तर अहवाल / माहिती
                 </label>
                 <textarea 
-                  rows={3}
+                  rows={2}
                   placeholder="कार्यक्रमाचे स्वरूप, विशेष उपस्थिती, पारितोषिके किंवा उल्लेखनीय घडामोडी लिहा..."
                   value={descriptionMr}
                   onChange={(e) => setDescriptionMr(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-medium focus:border-heritage-burgundy outline-none bg-white leading-relaxed"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-medium focus:border-heritage-burgundy outline-none bg-white leading-relaxed"
                 />
               </div>
             </div>
 
-            {/* Dynamic Days / Sub-events Section with Auto Generate */}
-            <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/70 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            {/* ३. दिवस / उप-इव्हेंट विभाग */}
+            <div className="p-3 sm:p-4 bg-amber-50/40 rounded-2xl border border-amber-200/70 space-y-2.5">
+              <div className="flex flex-row items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-xs font-black uppercase text-amber-950 flex items-center gap-1.5">
+                  <h3 className="text-xs font-black uppercase text-amber-950 flex items-center gap-1">
                     <Tag className="w-3.5 h-3.5 text-amber-700" />
-                    <span>दिवस / उप-इव्हेंट विभाग ({eventDays.length})</span>
+                    <span>दिवस विभाग ({eventDays.length})</span>
                   </h3>
-                  <p className="text-[10px] text-amber-800/80">
-                    तारखेनुसार दिवस आपोआप तयार करा किंवा मॅन्युअली विशेष विभाग जोडा.
+                  <p className="text-[10px] text-amber-800/80 hidden sm:block">
+                    प्रत्येक दिवसासाठी स्वतंत्र ३० फोटो जोडता येतील.
                   </p>
                 </div>
 
-                {/* Auto Generate Button */}
                 <button
                   type="button"
                   onClick={handleAutoGenerateDays}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-[11px] shadow-2xs transition shrink-0 cursor-pointer"
-                  title="निवडलेल्या From आणि To तारखेवरून दिवस १, दिवस २ आपोआप तयार करा"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-bold text-[10px] sm:text-[11px] shadow-2xs transition shrink-0 cursor-pointer"
+                  title="तारखेवरून दिवस आपोआप बनवा"
                 >
-                  <Wand2 className="w-3.5 h-3.5" />
-                  <span>तारखांवरून दिवस आपोआप बनवा</span>
+                  <Wand2 className="w-3 h-3" />
+                  <span>आपोआप बनवा</span>
                 </button>
               </div>
 
               {/* Add New Day Input */}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <input 
                   type="text"
-                  placeholder="नवीन दिवस किंवा विभाग टाका (उदा. दिवस १ - आगमन, गरबा नाईट, महाप्रसाद)..."
+                  placeholder="उदा. दिवस १ - आगमन, गरबा नाईट, महाप्रसाद..."
                   value={newDayTitle}
                   onChange={(e) => setNewDayTitle(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs font-medium outline-none focus:border-heritage-burgundy"
+                  className="flex-1 px-3 py-1.5 bg-white border border-amber-300 rounded-xl text-xs font-medium outline-none focus:border-heritage-burgundy"
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddDay(); } }}
                 />
                 <button
                   type="button"
                   onClick={handleAddDay}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer shrink-0"
                 >
                   जोडा
                 </button>
@@ -518,11 +646,11 @@ export default function AdminInitiativesPage() {
 
               {/* Day Chips List */}
               {eventDays.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   {eventDays.map((day) => (
                     <span 
                       key={day.id}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-amber-300/80 text-[11px] font-bold text-amber-900 shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-white border border-amber-300/80 text-[10px] font-bold text-amber-900 shadow-2xs"
                     >
                       <span>{day.title}</span>
                       <button
@@ -538,22 +666,26 @@ export default function AdminInitiativesPage() {
               )}
             </div>
 
-            {/* Photo Slots with Day Filter & Reorder Controls */}
-            <div className="space-y-3 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* ४. दिवसनिहाय फोटो गॅलरी व सुलभ री-ऑर्डरिंग */}
+            <div className="space-y-3 pt-1">
+              
+              {/* गॅलरी हेडर आणि अपलोड बटण */}
+              <div className="flex flex-row items-center justify-between gap-2 border-b pb-2">
                 <div>
                   <h3 className="text-xs font-black uppercase text-gray-700 tracking-wider">
-                    ३०-फोटो गॅलरी ({slots.length}/{MAX_SLOTS} भरले आहेत)
+                    {activeDayFilter === 'ALL' ? 'सर्व फोटो गॅलरी' : `गॅलरी: ${activeDayFilter}`} ({currentDaySlots.length}/{MAX_SLOTS_PER_DAY})
                   </h3>
-                  <p className="text-[11px] text-gray-400">
-                    क्रम बदलण्यासाठी डावा (←) किंवा उजवा (→) बाण वापरा.
-                  </p>
+                  <span className="text-[10px] text-amber-800 font-bold">
+                    {availableSlotsInActiveView > 0 
+                      ? `${availableSlotsInActiveView} फोटो स्लॉट शिल्लक` 
+                      : '३० फोटो कोटा पूर्ण'}
+                  </span>
                 </div>
 
-                {slots.length < MAX_SLOTS && (
-                  <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-heritage-burgundy/10 text-heritage-burgundy hover:bg-heritage-burgundy hover:text-white transition text-xs font-bold cursor-pointer border border-heritage-burgundy/20">
-                    <UploadCloud className="w-4 h-4" />
-                    <span>मल्टिपल फोटो निवडा ({MAX_SLOTS - slots.length} जागा शिल्लक)</span>
+                {availableSlotsInActiveView > 0 && (
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-heritage-burgundy text-white hover:bg-heritage-crimson transition text-[11px] font-bold cursor-pointer shadow-xs">
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>फोटो निवडा (+{availableSlotsInActiveView})</span>
                     <input 
                       type="file" 
                       multiple 
@@ -566,22 +698,22 @@ export default function AdminInitiativesPage() {
                 )}
               </div>
 
-              {/* Day Filter Chips for Admin */}
+              {/* दिवस फिल्टर टॅब्स */}
               {eventDays.length > 0 && (
-                <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1 shrink-0 mr-1">
-                    <Filter className="w-3 h-3" /> दिवस फिल्टर:
+                    <Filter className="w-3 h-3" /> दिवस निवडा:
                   </span>
                   <button
                     type="button"
                     onClick={() => setActiveDayFilter('ALL')}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer shrink-0 ${
                       activeDayFilter === 'ALL'
-                        ? 'bg-heritage-burgundy text-white'
+                        ? 'bg-heritage-burgundy text-white shadow-2xs'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    सर्व फोटो ({slots.length})
+                    सर्व एकत्र ({slots.length})
                   </button>
                   {eventDays.map(day => {
                     const count = slots.filter(s => s.dayTag === day.title).length;
@@ -590,26 +722,27 @@ export default function AdminInitiativesPage() {
                         key={day.id}
                         type="button"
                         onClick={() => setActiveDayFilter(day.title)}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                           activeDayFilter === day.title
-                            ? 'bg-amber-600 text-white'
+                            ? 'bg-amber-600 text-white shadow-2xs'
                             : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
                         }`}
                       >
-                        {day.title} ({count})
+                        {day.title} ({count}/३०)
                       </button>
                     );
                   })}
                 </div>
               )}
 
+              {/* अपलोड प्रोग्रेस बार */}
               {uploadProgress && (
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1.5">
                   <div className="flex justify-between text-xs font-bold text-amber-900">
-                    <span>फोटो कॉम्प्रेशन व ImgBB अपलोड चालू आहे...</span>
+                    <span>कॉम्प्रेशन व अपलोड चालू आहे...</span>
                     <span>{uploadProgress.current} / {uploadProgress.total}</span>
                   </div>
-                  <div className="w-full bg-amber-200 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-amber-200 h-1.5 rounded-full overflow-hidden">
                     <div 
                       className="bg-amber-600 h-full transition-all duration-300"
                       style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
@@ -618,67 +751,63 @@ export default function AdminInitiativesPage() {
                 </div>
               )}
 
-              {/* Slots Grid with Reorder Controls */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 pt-2">
-                {visibleSlots.map((slot) => {
-                  const originalIndex = slots.findIndex(s => s.slotNo === slot.slotNo);
+              {/* फोटो स्लॉट्स ग्रिड (थेट नंबर ड्रॉपडाउन आणि ड्रॅग-अँड-ड्रॉप सह) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 pt-1">
+                {currentDaySlots.map((slot, index) => {
+                  const displayRank = index + 1;
 
                   return (
                     <div 
                       key={slot.slotNo}
-                      className="relative border border-gray-200 rounded-2xl p-2 bg-white flex flex-col justify-between shadow-2xs group"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, slot.slotNo)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, slot.slotNo)}
+                      className={`relative border rounded-2xl p-2 bg-white flex flex-col justify-between shadow-2xs group cursor-grab active:cursor-grabbing transition ${
+                        draggedSlotNo === slot.slotNo ? 'opacity-40 border-dashed border-amber-500 scale-95' : 'border-gray-200 hover:border-amber-400'
+                      }`}
                     >
-                      <span className="absolute top-2 left-2 z-10 text-[9px] font-black px-1.5 py-0.5 rounded bg-heritage-burgundy text-white shadow">
-                        #{slot.slotNo}
-                      </span>
+                      {/* ड्रॅग हॅन्डल व थेट पोझिशन सिलेक्ट ड्रॉपडाउन */}
+                      <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-black/75 backdrop-blur-xs text-white rounded-lg px-1.5 py-0.5 shadow">
+                        <GripVertical className="w-3 h-3 text-gray-300" />
+                        <span className="text-[9px] font-black">#</span>
+                        <select
+                          value={displayRank}
+                          onChange={(e) => handleDirectOrderChange(slot, e.target.value)}
+                          className="bg-transparent text-amber-300 font-black text-[10px] outline-none cursor-pointer"
+                          title="कोणताही क्रम निवडा (उदा. थेट १ किंवा ५)"
+                        >
+                          {Array.from({ length: currentDaySlots.length }).map((_, rIdx) => (
+                            <option key={rIdx + 1} value={rIdx + 1} className="text-black">
+                              {rIdx + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
+                      {/* फोटो थंबनेल */}
                       <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
                         <img 
                           src={slot.thumbUrl || slot.url} 
                           alt={`Photo ${slot.slotNo}`} 
-                          className="w-full h-full object-cover" 
+                          className="w-full h-full object-cover pointer-events-none" 
                         />
                         <button 
                           type="button"
                           onClick={() => handleRemoveSlot(slot.slotNo)}
-                          className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-red-600 text-white opacity-0 group-hover:opacity-100 transition shadow hover:bg-red-700 cursor-pointer"
-                          title="फोटो काढा"
+                          className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-red-600 text-white opacity-0 group-hover:opacity-100 transition shadow hover:bg-red-700 cursor-pointer z-10"
+                          title="काढा"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
 
-                      {/* Reorder Buttons */}
-                      <div className="flex items-center justify-between gap-1 mt-1.5">
-                        <button
-                          type="button"
-                          disabled={originalIndex === 0}
-                          onClick={() => handleMovePhoto(originalIndex, 'left')}
-                          className="p-1 rounded border border-gray-200 bg-gray-50 text-gray-600 hover:bg-heritage-burgundy hover:text-white disabled:opacity-30 cursor-pointer transition"
-                          title="डावीकडे घ्या"
-                        >
-                          <ArrowLeft className="w-3 h-3" />
-                        </button>
-
-                        <span className="text-[9px] font-bold text-gray-400">क्रम {slot.slotNo}</span>
-
-                        <button
-                          type="button"
-                          disabled={originalIndex === slots.length - 1}
-                          onClick={() => handleMovePhoto(originalIndex, 'right')}
-                          className="p-1 rounded border border-gray-200 bg-gray-50 text-gray-600 hover:bg-heritage-burgundy hover:text-white disabled:opacity-30 cursor-pointer transition"
-                          title="उजवीकडे घ्या"
-                        >
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-
-                      {/* Day Tag Dropdown */}
+                      {/* दिवस निवड ड्रॉपडाउन */}
                       {eventDays.length > 0 && (
                         <select
                           value={slot.dayTag || ''}
                           onChange={(e) => handleSlotDayTagChange(slot.slotNo, e.target.value)}
-                          className="mt-1.5 w-full text-[9px] font-bold p-1 border rounded-lg bg-amber-50/50 text-amber-950 border-amber-200 outline-none cursor-pointer"
+                          className="mt-1.5 w-full text-[9px] font-bold p-1 border rounded-lg bg-amber-50/50 text-amber-950 border-amber-200 outline-none cursor-pointer truncate"
                         >
                           <option value="">दिवस निवडा...</option>
                           {eventDays.map(d => (
@@ -687,6 +816,7 @@ export default function AdminInitiativesPage() {
                         </select>
                       )}
 
+                      {/* कॅप्शन इनपुट */}
                       <input 
                         type="text"
                         placeholder="कॅप्शन..."
@@ -698,28 +828,28 @@ export default function AdminInitiativesPage() {
                   );
                 })}
 
-                {/* Empty placeholders */}
-                {activeDayFilter === 'ALL' && Array.from({ length: Math.min(6, MAX_SLOTS - slots.length) }).map((_, idx) => (
+                {/* रिकामे स्लॉट प्लेसहोल्डर्स */}
+                {Array.from({ length: Math.min(3, availableSlotsInActiveView) }).map((_, idx) => (
                   <div 
                     key={`empty-${idx}`}
-                    className="border border-dashed border-gray-200 rounded-2xl p-2 bg-gray-50/50 flex flex-col items-center justify-center aspect-square text-gray-300"
+                    className="border border-dashed border-gray-200 rounded-2xl p-2 bg-gray-50/40 flex flex-col items-center justify-center aspect-square text-gray-300"
                   >
-                    <span className="text-[9px] font-bold">स्लॉट {slots.length + idx + 1}</span>
+                    <span className="text-[9px] font-bold">स्लॉट {currentDaySlots.length + idx + 1}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Save Button */}
-            <div className="flex justify-end pt-4 border-t border-gray-100">
+            {/* सेव्ह बटण */}
+            <div className="flex justify-end pt-3 border-t border-gray-100">
               <button
                 type="button"
                 disabled={saving || Boolean(uploadProgress)}
                 onClick={handleSave}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-heritage-burgundy hover:bg-heritage-crimson text-white font-bold text-xs shadow-md transition disabled:opacity-60 cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-heritage-burgundy hover:bg-heritage-crimson text-white font-bold text-xs shadow-md transition disabled:opacity-60 cursor-pointer"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>वर्ष {detectedYear} ची माहिती व ३० फोटो सेव्ह करा</span>
+                <span>सर्व माहिती व फोटो सेव्ह करा</span>
               </button>
             </div>
 
@@ -728,7 +858,7 @@ export default function AdminInitiativesPage() {
 
       </div>
 
-      {/* Committee Management Modal */}
+      {/* उत्सव समिती पॉपअप */}
       {showCommitteeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm">
           <div className="bg-white rounded-3xl max-w-5xl w-full p-4 sm:p-6 shadow-2xl border border-gray-200 max-h-[92vh] overflow-y-auto space-y-4">
@@ -757,7 +887,7 @@ export default function AdminInitiativesPage() {
         </div>
       )}
 
-      {/* Add New Initiative Modal */}
+      {/* नवीन उपक्रम तयार करणे पॉपअप */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-200 space-y-5">

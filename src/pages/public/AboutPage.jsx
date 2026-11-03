@@ -1,12 +1,14 @@
-//src\pages\public\AboutPage.jsx
-import React, { useEffect } from 'react';
+// src/pages/public/AboutPage.jsx
+import React, { useState, useEffect } from 'react';
 import { 
   HeartHandshake, ShieldCheck, MapPin, 
-  Sparkles, CheckCircle2, Camera 
+  Sparkles, CheckCircle2, Camera,
+  Users, Calendar, Loader2, Heart
 } from 'lucide-react';
+import { INITIATIVES_DATA } from '../../data/initiativesData';
+import { committeeService } from '../../services/committeeService';
 
 export default function AboutPage() {
-  // Page load zhalyaver thet top var scroll karne
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -18,6 +20,7 @@ export default function AboutPage() {
     { label: 'सक्रिय कार्यकर्ते व स्वयंसेवक', value: '१००+' },
   ];
 
+  // Core Trustees / Board
   const committeeMembers = [
     {
       name: 'श्री. सुशांत शेलार',
@@ -40,10 +43,41 @@ export default function AboutPage() {
     {
       name: 'श्री. संदेश महाडिक',
       role: 'खजिनदार',
-      image: '/assets/team/sandesh_mahadik.JPG',
+      image: '/assets/team/sandesh_mahadik.jpg',
       bio: 'संस्थेचे डिजिटल व्यवस्थापन, ताळेबंद आणि पारदर्शक आर्थिक कारभार.'
     }
   ];
+
+  // Dynamic Event-wise Committee States
+  const [selectedEventId, setSelectedEventId] = useState(INITIATIVES_DATA[0]?.id || 'aapla-dandiya');
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const [eventMembers, setEventMembers] = useState([]);
+  const [committeeLoading, setCommitteeLoading] = useState(false);
+  const [activeGenderTab, setActiveGenderTab] = useState('ALL'); // 'ALL' | 'FEMALE' | 'MALE'
+
+  // Load Event Committee Data from Firestore
+  useEffect(() => {
+    async function loadEventCommittee() {
+      setCommitteeLoading(true);
+      try {
+        const data = await committeeService.getMembers(selectedEventId, selectedYear);
+        setEventMembers(data || []);
+      } catch (err) {
+        console.error('Committee load error on About page:', err);
+      } finally {
+        setCommitteeLoading(false);
+      }
+    }
+
+    loadEventCommittee();
+  }, [selectedEventId, selectedYear]);
+
+  const filteredEventMembers = activeGenderTab === 'ALL'
+    ? eventMembers
+    : eventMembers.filter(m => m.gender === activeGenderTab);
+
+  const maleCount = eventMembers.filter(m => m.gender === 'MALE').length;
+  const femaleCount = eventMembers.filter(m => m.gender === 'FEMALE').length;
 
   return (
     <div className="min-h-screen bg-heritage-cream font-sans pb-24">
@@ -88,8 +122,6 @@ export default function AboutPage() {
       {/* 3. Mission & Vision */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 mt-16 space-y-8">
         <div className="grid md:grid-cols-2 gap-6">
-          
-          {/* Dhyey */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-heritage-gold/20 space-y-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
               <HeartHandshake className="w-5 h-5" />
@@ -100,7 +132,6 @@ export default function AboutPage() {
             </p>
           </div>
 
-          {/* Uddishte */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-heritage-gold/20 space-y-3">
             <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center font-bold">
               <ShieldCheck className="w-5 h-5" />
@@ -121,11 +152,10 @@ export default function AboutPage() {
               </li>
             </ul>
           </div>
-
         </div>
       </section>
 
-      {/* 4. Leadership & Committee Team */}
+      {/* 4. Leadership & Core Trustees */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 mt-16 space-y-6">
         <div className="text-center space-y-1">
           <span className="text-[10px] uppercase font-black tracking-widest text-heritage-crimson">
@@ -149,7 +179,7 @@ export default function AboutPage() {
                     alt={m.name} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200';
+                      e.target.src = 'https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-profile-glyph-black-icon-png-image_691589.jpg';
                     }}
                   />
                 </div>
@@ -168,7 +198,206 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* 5. Contact & Social Media Box (No Email, Direct Instagram & Facebook) */}
+            {/* Trust, 80G & CSR Badges Section */}
+<section className="max-w-5xl mx-auto px-4 sm:px-8 mt-16">
+  <div className="bg-gradient-to-br from-heritage-burgundy to-slate-900 rounded-3xl p-6 sm:p-8 text-white border border-heritage-gold/30 shadow-xl space-y-6">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <div>
+        <span className="text-[10px] font-black uppercase tracking-widest text-heritage-gold">
+          अधिकृत व नोंदणीकृत सामाजिक संस्था
+        </span>
+        <h3 className="text-xl sm:text-2xl font-black mt-1">
+          शेलारमामा फाऊंडेशन, मुंबई
+        </h3>
+        <p className="text-xs text-gray-300 mt-1">
+          सार्वजनिक विश्वस्त व्यवस्था नोंदणी अधिनियम अंतर्गत अधिकृत नोंदणीकृत.
+        </p>
+      </div>
+
+      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 border border-white/20 text-xs font-bold text-heritage-gold shrink-0">
+        <span>नोंदणी क्र.: E-32858 (Mumbai)</span>
+      </div>
+    </div>
+
+    {/* 80G & CSR Highlights Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* 80G Tax Exemption */}
+      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-amber-400">80G आयकर सवलत (Tax Benefit)</span>
+          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">सक्रिय</span>
+        </div>
+        <p className="text-[11px] text-gray-300 leading-relaxed font-medium">
+          शेलारमामा फाऊंडेशनला दिलेल्या देणग्यांवर आयकर कायदा कलम 80G अंतर्गत कर सवलत (Tax Exemption) उपलब्ध आहे.
+        </p>
+      </div>
+
+      {/* CSR 1 & Corporate Funding */}
+      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-sky-400">CSR निधीसाठी पात्र (Eligible for CSR)</span>
+          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">CSR-1 Registered</span>
+        </div>
+        <p className="text-[11px] text-gray-300 leading-relaxed font-medium">
+          कंपन्या व उद्योग समूह त्यांच्या सामाजिक उत्तरदायित्व (CSR Funding) अंतर्गत शैक्षणिक, क्रीडा व समाजकल्याण उपक्रमांसाठी थेट सहयोग करू शकतात.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+      {/* 5. Dynamic Event-wise Committee Section (उत्सव संयोजन समिती) */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-8 mt-20 space-y-6">
+        <div className="text-center space-y-1">
+          <span className="text-[10px] uppercase font-black tracking-widest text-amber-700">
+            मैदानी कार्यकर्ते व उत्सव समिती
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-heritage-burgundy">
+            वार्षिक उत्सव संयोजन समिती
+          </h2>
+          <p className="text-xs text-gray-500 font-medium">
+            प्रत्येक उपक्रमाचे प्रत्यक्ष आयोजन आणि संचालन करणाऱ्या कार्यकर्त्यांची अधिकृत नामावली.
+          </p>
+        </div>
+
+        {/* Event Chips & Year Selector Filter Box */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-heritage-gold/30 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+            
+            {/* Event Selection Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <span className="text-[11px] font-bold text-gray-400 shrink-0 mr-1 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-heritage-burgundy" /> उपक्रम:
+            </span>
+            {INITIATIVES_DATA.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSelectedEventId(item.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border shrink-0 ${
+                  selectedEventId === item.id
+                    ? 'bg-heritage-burgundy text-white border-heritage-burgundy shadow-xs'
+                    : 'bg-heritage-cream/50 text-gray-700 border-gray-200 hover:bg-heritage-cream'
+                }`}
+              >
+                {item.titleMr}
+              </button>
+            ))}
+          </div>
+
+            {/* Year Selector */}
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-[11px] font-bold text-gray-600">वर्ष:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="h-8 px-2.5 rounded-xl border border-gray-300 font-black text-xs bg-amber-50 text-amber-950 outline-none cursor-pointer"
+              >
+                {['2026', '2025', '2024'].map(yr => (
+                  <option key={yr} value={yr}>वर्ष {yr}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Gender Filter Buttons */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setActiveGenderTab('ALL')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                activeGenderTab === 'ALL'
+                  ? 'bg-heritage-burgundy text-white shadow-2xs'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              सर्व सदस्य ({eventMembers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveGenderTab('FEMALE')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                activeGenderTab === 'FEMALE'
+                  ? 'bg-pink-600 text-white shadow-2xs'
+                  : 'bg-pink-50 text-pink-700 border border-pink-200'
+              }`}
+            >
+              <Heart className="w-3 h-3" />
+              <span>महिला समिती ({femaleCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveGenderTab('MALE')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                activeGenderTab === 'MALE'
+                  ? 'bg-sky-700 text-white shadow-2xs'
+                  : 'bg-sky-50 text-sky-800 border border-sky-200'
+              }`}
+            >
+              पुरुष प्रतिनिधी ({maleCount})
+            </button>
+          </div>
+        </div>
+
+        
+
+        {/* Dynamic Members Grid */}
+        <div>
+          {committeeLoading ? (
+            <div className="py-16 text-center text-gray-400 text-xs flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-heritage-burgundy" />
+              <span>समिती माहिती लोड होत आहे...</span>
+            </div>
+          ) : filteredEventMembers.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3.5">
+              {filteredEventMembers.map((m) => (
+                <div 
+                  key={m.id}
+                  className={`bg-white rounded-2xl p-3 text-center border shadow-2xs flex flex-col items-center justify-between hover:shadow-md transition ${
+                    m.gender === 'FEMALE' ? 'border-pink-200 bg-pink-50/10' : 'border-heritage-gold/20'
+                  }`}
+                >
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-heritage-gold/40 shadow-inner mb-2">
+                    <img 
+                      src={m.photoUrl} 
+                      alt={m.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = 'https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-profile-glyph-black-icon-png-image_691589.jpg';
+                      }}
+                    />
+                  </div>
+                  <div className="w-full">
+                    <h4 className="text-xs font-black text-heritage-burgundy leading-snug truncate" title={m.name}>
+                      {m.name}
+                    </h4>
+                    <span className="text-[10px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-full inline-block mt-0.5 truncate max-w-full">
+                      {m.role}
+                    </span>
+                    <span className={`block mt-1 text-[8px] font-black tracking-wider uppercase ${
+                      m.gender === 'FEMALE' ? 'text-pink-600' : 'text-sky-700'
+                    }`}>
+                      {m.gender === 'FEMALE' ? 'महिला' : 'पुरुष'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300">
+              <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-gray-500">
+                या उपक्रमासाठी आणि {selectedYear} वर्षासाठी अद्याप समिती जोडलेली नाही.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+
+
+      {/* 6. Contact & Social Media Box */}
       <section className="max-w-5xl mx-auto px-4 sm:px-8 mt-16">
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-heritage-gold/30 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 text-center md:text-left">
@@ -184,9 +413,7 @@ export default function AboutPage() {
             </div>
           </div>
 
-          {/* Social Media Connect Buttons */}
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
-            {/* Instagram Button */}
             <a
               href="https://www.instagram.com/shelarmamafoundation"
               target="_blank"
@@ -197,7 +424,6 @@ export default function AboutPage() {
               <span>Instagram वर फॉलो करा</span>
             </a>
 
-            {/* Facebook Button */}
             <a
               href="https://www.facebook.com/shelarmamafoundation"
               target="_blank"
