@@ -1,8 +1,9 @@
+// src/pages/admin/AdminFinancePage.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, Search, Trash2, Edit3, ArrowUp, ArrowDown, 
   HandCoins, RefreshCw, Lock, ShieldAlert,
-  FileSpreadsheet, Printer, Upload, Loader2
+  FileSpreadsheet, Printer, Upload, Loader2, Clock, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { auth } from '../../config/firebase';
@@ -14,9 +15,12 @@ import FinanceSummaryCards from '../../components/admin/finance/FinanceSummaryCa
 import FinanceTransactionModal from '../../components/admin/finance/FinanceTransactionModal';
 import FinanceImportModal from '../../components/admin/finance/FinanceImportModal';
 
+const LAST_EVENT_STORAGE_KEY = 'smf_finance_last_event_id';
+
 export default function AdminFinancePage() {
   const [records, setRecords] = useState([]);
   const [users, setUsers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -69,29 +73,26 @@ export default function AdminFinancePage() {
   const [selectedEventYear, setSelectedEventYear] = useState('ALL');
   const [selectedFinancialYear, setSelectedFinancialYear] = useState('ALL');
   const [selectedType, setSelectedType] = useState('ALL');
-
-  const defaultCategories = [
-    'मंडप आणि लाइटिंग', 'डेकोरेशन', 'मंडप व डेकोरेशन', 'ध्वनी व लाईट्स', 
-    'प्रसाद व भोजन', 'बॅनर्स व जाहिरात', 'पारितोषिक व सन्मानचिन्ह', 
-    'वाहतूक व इंधन', 'देणगी पावती', 'इतर विविध खर्च'
-  ];
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('ALL');
 
   useEffect(() => {
     loadData();
   }, []);
 
-  // १. सुरुवातीला पहिल्या २५ नोंदी आणणे
+  // १. डेटा व कॅटेगरीज लोड करणे
   const loadData = async () => {
     setLoading(true);
     try {
-      const [res, usersData] = await Promise.all([
+      const [res, usersData, cats] = await Promise.all([
         financeService.getPaginatedRecords(25),
-        userService?.getUsers ? userService.getUsers() : []
+        userService?.getUsers ? userService.getUsers() : [],
+        financeService.getCategories()
       ]);
       setRecords(res.records || []);
       setLastDocSnapshot(res.lastDocSnapshot);
       setHasMore(res.hasMore);
       setUsers(Array.isArray(usersData) ? usersData : []);
+      setCategories(Array.isArray(cats) ? cats : []);
     } catch (err) {
       console.error(err);
       Swal.fire({
@@ -122,6 +123,7 @@ export default function AdminFinancePage() {
     }
   };
 
+  // ३. नोंद सेव्ह करणे
   const handleSaveRecord = async (formData) => {
     try {
       const activeUser = {
@@ -132,8 +134,13 @@ export default function AdminFinancePage() {
         isSuperAdmin: currentUser.isSuperAdmin !== undefined ? currentUser.isSuperAdmin : true
       };
 
+      if (formData.eventId) {
+        localStorage.setItem(LAST_EVENT_STORAGE_KEY, formData.eventId);
+      }
+
       if (editingRecord) {
         await financeService.updateRecord(editingRecord.id, formData, activeUser);
+        setRecords(prev => prev.map(r => r.id === editingRecord.id ? { ...r, ...formData } : r));
         Swal.fire({
           icon: 'success',
           title: 'नोंद अपडेट केली!',
@@ -153,6 +160,10 @@ export default function AdminFinancePage() {
           timer: 2000,
           showConfirmButton: false
         });
+      }
+
+      if (formData.category && !categories.includes(formData.category)) {
+        setCategories(prev => [...prev, formData.category]);
       }
 
       setEditingRecord(null);
@@ -231,7 +242,6 @@ export default function AdminFinancePage() {
   const safeRecords = Array.isArray(records) ? records : [];
   const safeUsers = Array.isArray(users) ? users : [];
 
-  // इव्हेंट नावाचे एकत्रीकरण (चैत्रनवरात्री vs चैत्र नवरात्र जोडणे)
   const normalizeEventName = (rawName) => {
     if (!rawName) return 'सामान्य संस्था निधी';
     const clean = rawName.replace(/\s+/g, '').trim();
@@ -241,7 +251,6 @@ export default function AdminFinancePage() {
     return rawName.trim();
   };
 
-  // आर्थिक वर्ष काढणे
   const getRecordFinancialYear = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -254,7 +263,6 @@ export default function AdminFinancePage() {
     }
   };
 
-  // उपलब्ध इव्हेंट्सची डायनॅमिक यादी
   const dynamicEventOptions = useMemo(() => {
     const eventSet = new Set();
     INITIATIVES_DATA.forEach(i => eventSet.add(i.titleMr.trim()));
@@ -265,7 +273,6 @@ export default function AdminFinancePage() {
     return Array.from(eventSet).sort();
   }, [safeRecords]);
 
-  // उपलब्ध इव्हेंट वर्षे (Event Years)
   const availableEventYears = useMemo(() => {
     const years = new Set();
     safeRecords.forEach(r => {
@@ -275,7 +282,6 @@ export default function AdminFinancePage() {
     return Array.from(years).sort().reverse();
   }, [safeRecords]);
 
-  // उपलब्ध आर्थिक वर्षे (Financial Years)
   const availableFinancialYears = useMemo(() => {
     const fySet = new Set();
     safeRecords.forEach(r => {
@@ -287,7 +293,6 @@ export default function AdminFinancePage() {
 
   const isSuperAdmin = Boolean(currentUser?.isSuperAdmin === true || currentUser?.role === 'SUPER_ADMIN');
 
-  // युजरनुसार नोंदी दिसणे
   const userVisibleRecords = useMemo(() => {
     return safeRecords.filter(r => {
       if (r.isDeleted) return false;
@@ -300,7 +305,6 @@ export default function AdminFinancePage() {
   const targetStaffName = selectedStaffObj?.name?.trim().toLowerCase();
   const targetStaffEmail = selectedStaffObj?.email?.trim().toLowerCase();
 
-  // फिल्टर्सनुसार नोंदी
   const filteredRecords = useMemo(() => {
     return userVisibleRecords.filter(r => {
       const matchSearch = (r.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -334,20 +338,23 @@ export default function AdminFinancePage() {
       const matchFY = selectedFinancialYear === 'ALL' || getRecordFinancialYear(r.date) === selectedFinancialYear;
       const matchType = selectedType === 'ALL' || r.type === selectedType;
 
-      return matchSearch && matchStaff && matchEvent && matchEventYear && matchFY && matchType;
+      const recStatus = r.paymentStatus || r.status || 'PAID';
+      const matchStatus = selectedPaymentStatus === 'ALL' || recStatus === selectedPaymentStatus;
+
+      return matchSearch && matchStaff && matchEvent && matchEventYear && matchFY && matchType && matchStatus;
     });
-  }, [userVisibleRecords, searchTerm, selectedStaff, targetStaffName, targetStaffEmail, selectedEvent, selectedEventYear, selectedFinancialYear, selectedType]);
+  }, [userVisibleRecords, searchTerm, selectedStaff, targetStaffName, targetStaffEmail, selectedEvent, selectedEventYear, selectedFinancialYear, selectedType, selectedPaymentStatus]);
 
   const totals = financeService.calculateTotals(filteredRecords, selectedStaff, selectedStaffObj);
 
-  // एक्सेल एक्सपोर्ट (केवळ सुपर ॲडमिन)
+  // एक्सेल एक्सपोर्ट
   const handleExportExcel = () => {
     if (filteredRecords.length === 0) {
       Swal.fire({ icon: 'warning', title: 'नोंदी नाहीत', text: 'एक्सपोर्ट करण्यासाठी कोणतीही नोंद उपलब्ध नाही.' });
       return;
     }
 
-    const headers = ["दिनांक", "पावती क्र.", "प्रकार", "इव्हेंटचे नाव", "इव्हेंट वर्ष", "तपशील", "वर्गवारी", "प्रतिनिधी नाव", "पेमेंट मोड", "रक्कम (₹)"];
+    const headers = ["दिनांक", "पावती क्र.", "प्रकार", "इव्हेंटचे नाव", "इव्हेंट वर्ष", "तपशील", "वर्गवारी", "पेमेंट स्थिती", "एकूण बिल (₹)", "दिलेली रक्कम (₹)", "बाकी रक्कम (₹)", "प्रतिनिधी", "मोड"];
     const rows = filteredRecords.map(r => [
       `"${r.date || ''}"`,
       `"${r.txnId || ''}"`,
@@ -356,9 +363,12 @@ export default function AdminFinancePage() {
       `"${r.eventYear || (r.date ? new Date(r.date).getFullYear() : '')}"`,
       `"${(r.description || '').replace(/"/g, '""')}"`,
       `"${r.category || ''}"`,
+      `"${(r.paymentStatus || r.status) === 'PENDING' ? 'देणे बाकी' : (r.paymentStatus || r.status) === 'PARTIAL' ? 'अर्धवट' : 'पूर्ण दिले'}"`,
+      Number(r.amount) || 0,
+      r.paidAmount !== undefined ? Number(r.paidAmount) : Number(r.amount) || 0,
+      Number(r.pendingAmount) || 0,
       `"${r.assignedUserName || ''}"`,
-      `"${r.mode || 'CASH'}"`,
-      Number(r.amount) || 0
+      `"${r.mode || 'CASH'}"`
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
@@ -371,7 +381,8 @@ export default function AdminFinancePage() {
     document.body.removeChild(link);
   };
 
-  // पीडीएफ प्रिंट (केवळ सुपर ॲडमिन)
+  // पीडीएफ प्रिंट
+// पीडीएफ प्रिंट (अचूक ॲडव्हान्स ऑटो-सेटलमेंट व सर्व मूळ शेड्यूल्ससह)
   const handlePrintPDF = () => {
     if (filteredRecords.length === 0) {
       Swal.fire({ icon: 'warning', title: 'नोंदी नाहीत', text: 'प्रिंट करण्यासाठी कोणतीही नोंद उपलब्ध नाही.' });
@@ -381,6 +392,7 @@ export default function AdminFinancePage() {
     const incomeRecords = filteredRecords.filter(r => r.type === 'INCOME');
     const expenseRecords = filteredRecords.filter(r => r.type === 'EXPENSE');
 
+    // जमा वर्गीकरण
     const incomeCategories = {};
     incomeRecords.forEach(r => {
       const cat = r.category || 'इतर जमा';
@@ -389,27 +401,66 @@ export default function AdminFinancePage() {
       incomeCategories[cat].items.push(r);
     });
 
+    // खर्च वर्गीकरण (Paid आणि Pending सह)
     const expenseCategories = {};
     expenseRecords.forEach(r => {
       const cat = r.category || 'इतर विविध खर्च';
-      if (!expenseCategories[cat]) expenseCategories[cat] = { total: 0, items: [] };
-      expenseCategories[cat].total += Number(r.amount || 0);
+      if (!expenseCategories[cat]) expenseCategories[cat] = { total: 0, paid: 0, pending: 0, items: [] };
+      const totalAmt = Number(r.amount || 0);
+      const pStatus = r.paymentStatus || r.status || 'PAID';
+      const paid = r.paidAmount !== undefined ? Number(r.paidAmount) : (pStatus === 'PENDING' ? 0 : totalAmt);
+      const pending = r.pendingAmount !== undefined ? Number(r.pendingAmount) : (pStatus === 'PENDING' ? totalAmt : 0);
+
+      expenseCategories[cat].total += totalAmt;
+      expenseCategories[cat].paid += paid;
+      expenseCategories[cat].pending += pending;
       expenseCategories[cat].items.push(r);
     });
 
     const totalIncome = Object.values(incomeCategories).reduce((sum, c) => sum + c.total, 0);
-    const totalExpense = Object.values(expenseCategories).reduce((sum, c) => sum + c.total, 0);
-    const netBalance = totalIncome - totalExpense;
+    const totalActualExpense = Object.values(expenseCategories).reduce((sum, c) => sum + c.paid, 0);
+    const totalPendingLiability = Object.values(expenseCategories).reduce((sum, c) => sum + c.pending, 0);
+    const netBalance = totalIncome - totalActualExpense;
 
+    // =========================================================
+    // अचूक ॲडव्हान्स आणि ऑटो-सेटलमेंट गणित (Print साठी)
+    // =========================================================
     const advanceGivenRecords = filteredRecords.filter(r => r.type === 'ADVANCE_GIVEN');
     const totalAdvanceGiven = advanceGivenRecords.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-    const advanceSpent = expenseRecords.filter(r => r.mode === 'FROM_ADVANCE').reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    // प्रत्येक कार्यकर्त्याला मिळालेला ॲडव्हान्स पूल तयार करणे
+    const printStaffPool = {};
+    advanceGivenRecords.forEach(r => {
+      const amt = Number(r.amount) || 0;
+      const key = (r.assignedUserName || r.createdByUserName || '').trim().toLowerCase();
+      if (key) {
+        printStaffPool[key] = (printStaffPool[key] || 0) + amt;
+      }
+    });
+
+    let advanceSpent = 0;
+    expenseRecords.forEach(r => {
+      const pStatus = r.paymentStatus || r.status || 'PAID';
+      const paidAmt = r.paidAmount !== undefined ? Number(r.paidAmount) : (pStatus === 'PENDING' ? 0 : Number(r.amount || 0));
+      const key = (r.assignedUserName || r.createdByUserName || '').trim().toLowerCase();
+
+      if (r.mode === 'FROM_ADVANCE') {
+        advanceSpent += paidAmt;
+      } else if (r.mode === 'CASH' && key && (printStaffPool[key] || 0) > 0) {
+        const available = printStaffPool[key];
+        const settled = Math.min(available, paidAmt);
+        advanceSpent += settled;
+        printStaffPool[key] -= settled;
+      }
+    });
+
     const remainingAdvance = Math.max(0, totalAdvanceGiven - advanceSpent);
 
     const incKeys = Object.keys(incomeCategories);
     const expKeys = Object.keys(expenseCategories);
     const maxSummaryRows = Math.max(incKeys.length, expKeys.length);
 
+    // पान १: सारांश टेबल (Summary Rows)
     let summaryRowsHtml = '';
     for (let i = 0; i < maxSummaryRows; i++) {
       const incCat = incKeys[i];
@@ -433,15 +484,16 @@ export default function AdminFinancePage() {
           <td style="width: 4%; text-align: center;">${expCat ? i + 1 : ''}</td>
           <td style="width: 31%; font-weight: bold;">
             ${expCat || ''}
-            ${expData ? `<br><span style="font-size: 9px; color: #64748b; font-weight: normal;">(एकूण: ${expData.items.length} नोंदी)</span>` : ''}
+            ${expData ? `<br><span style="font-size: 9px; color: #64748b; font-weight: normal;">(एकूण: ${expData.items.length} नोंदी${expData.pending > 0 ? ` | देणे बाकी: ₹${expData.pending.toLocaleString('en-IN')}` : ''})</span>` : ''}
           </td>
           <td style="width: 14%; text-align: right; font-weight: bold; color: #991b1b;">
-            ${expData ? '₹ ' + expData.total.toLocaleString('en-IN') : ''}
+            ${expData ? '₹ ' + expData.paid.toLocaleString('en-IN') : ''}
           </td>
         </tr>
       `;
     }
 
+    // पान २: विभागनिहाय सविस्तर खर्च तपशील (Expense Schedules Table)
     let detailsHtml = `<h2 style="font-size: 14px; color: #991b1b; border-bottom: 2px solid #991b1b; padding-bottom: 4px; margin-top: 10px;">विभागनिहाय सविस्तर खर्च तपशील (Expense Schedules)</h2>`;
 
     expKeys.forEach((catName, idx) => {
@@ -450,36 +502,52 @@ export default function AdminFinancePage() {
         <div style="margin-top: 14px; margin-bottom: 18px; page-break-inside: avoid;">
           <div style="display: flex; justify-content: space-between; align-items: center; background: #fee2e2; padding: 5px 8px; border-radius: 4px; border-left: 4px solid #991b1b;">
             <strong style="color: #991b1b; font-size: 11px;">विभाग ${idx + 1}: ${catName}</strong>
-            <span style="font-weight: bold; font-size: 11px; color: #991b1b;">एकूण: ₹ ${cat.total.toLocaleString('en-IN')}</span>
+            <span style="font-weight: bold; font-size: 11px; color: #991b1b;">
+              प्रत्यक्ष पेड: ₹ ${cat.paid.toLocaleString('en-IN')} 
+              ${cat.pending > 0 ? `<span style="font-size: 9px; color: #d97706; margin-left: 8px;">(देणे बाकी: ₹ ${cat.pending.toLocaleString('en-IN')})</span>` : ''}
+            </span>
           </div>
 
           <table style="width: 100%; border-collapse: collapse; margin-top: 4px;">
             <thead>
               <tr style="background: #f8fafc; font-size: 9px; text-transform: uppercase;">
-                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 5%;">क्र.</th>
-                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 12%;">दिनांक</th>
-                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 15%;">पावती क्र.</th>
-                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 38%;">तपशील</th>
-                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 15%;">कोणामार्फत</th>
-                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 15%; text-align: right;">रक्कम (₹)</th>
+                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 4%;">क्र.</th>
+                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 10%;">दिनांक</th>
+                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 14%;">पावती क्र.</th>
+                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 34%;">तपशील</th>
+                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 14%;">कोणामार्फत</th>
+                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 10%;">स्थिती</th>
+                <th style="border: 1px solid #cbd5e1; padding: 4px; width: 14%; text-align: right;">रक्कम (₹)</th>
               </tr>
             </thead>
             <tbody>
-              ${cat.items.map((item, itemIdx) => `
-                <tr style="font-size: 10px;">
-                  <td style="border: 1px solid #cbd5e1; padding: 4px; text-align: center;">${itemIdx + 1}</td>
-                  <td style="border: 1px solid #cbd5e1; padding: 4px;">${item.date}</td>
-                  <td style="border: 1px solid #cbd5e1; padding: 4px; font-family: monospace;">${item.txnId || '-'}</td>
-                  <td style="border: 1px solid #cbd5e1; padding: 4px;">
-                    ${item.description}
-                    ${item.mode === 'FROM_ADVANCE' ? '<span style="font-size: 8px; background: #fef3c7; color: #92400e; padding: 1px 3px; border-radius: 3px; margin-left: 4px;">ॲडव्हान्स</span>' : ''}
-                  </td>
-                  <td style="border: 1px solid #cbd5e1; padding: 4px; color: #475569;">${item.assignedUserName || item.createdByUserName || '-'}</td>
-                  <td style="border: 1px solid #cbd5e1; padding: 4px; text-align: right; font-weight: bold; color: #991b1b;">
-                    ₹ ${Number(item.amount).toLocaleString('en-IN')}
-                  </td>
-                </tr>
-              `).join('')}
+              ${cat.items.map((item, itemIdx) => {
+                const itemStatus = item.paymentStatus || item.status || 'PAID';
+                const itemTotal = Number(item.amount || 0);
+                const itemPaid = item.paidAmount !== undefined ? Number(item.paidAmount) : (itemStatus === 'PENDING' ? 0 : itemTotal);
+                const itemPending = item.pendingAmount !== undefined ? Number(item.pendingAmount) : (itemStatus === 'PENDING' ? itemTotal : 0);
+
+                return `
+                  <tr style="font-size: 10px;">
+                    <td style="border: 1px solid #cbd5e1; padding: 4px; text-align: center;">${itemIdx + 1}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 4px;">${item.date}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 4px; font-family: monospace;">${item.txnId || '-'}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 4px;">
+                      ${item.description}
+                      ${item.mode === 'FROM_ADVANCE' ? '<span style="font-size: 8px; background: #fef3c7; color: #92400e; padding: 1px 3px; border-radius: 3px; margin-left: 4px;">ॲडव्हान्स</span>' : ''}
+                    </td>
+                    <td style="border: 1px solid #cbd5e1; padding: 4px; color: #475569;">${item.assignedUserName || item.createdByUserName || '-'}</td>
+                    <td style="border: 1px solid #cbd5e1; padding: 4px; text-align: center;">
+                      ${itemStatus === 'PAID' ? '<span style="color: #166534; font-weight: bold;">पूर्ण</span>' : 
+                        itemStatus === 'PARTIAL' ? `<span style="color: #d97706; font-weight: bold;">अर्धवट<br><small style="color: #dc2626;">बाकी: ₹${itemPending.toLocaleString('en-IN')}</small></span>` : 
+                        '<span style="color: #dc2626; font-weight: bold;">देणे बाकी</span>'}
+                    </td>
+                    <td style="border: 1px solid #cbd5e1; padding: 4px; text-align: right; font-weight: bold; color: ${itemStatus === 'PENDING' ? '#dc2626' : '#991b1b'};">
+                      ${itemStatus === 'PENDING' ? `₹ ${itemTotal.toLocaleString('en-IN')} <br><small style="color: #dc2626; font-weight: normal;">(देणे बाकी)</small>` : `₹ ${itemPaid.toLocaleString('en-IN')}`}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -493,7 +561,6 @@ export default function AdminFinancePage() {
         <head>
           <title>जमा-खर्च पत्रक - शेलारमामा फाऊंडेशन</title>
           <style>
-            
             @page { size: A4 portrait; margin: 8mm; }
             body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 10px; }
             .header-table { width: 100%; border-bottom: 2px solid #580a1a; padding-bottom: 6px; margin-bottom: 10px; }
@@ -532,7 +599,7 @@ export default function AdminFinancePage() {
               <tr>
                 <th colspan="3" class="th-jama">जमा सारांश (INCOME SUMMARY)</th>
                 <th style="background-color: #cbd5e1; border: none;"></th>
-                <th colspan="3" class="th-kharch">खर्च सारांश (EXPENSE SUMMARY)</th>
+                <th colspan="3" class="th-kharch">प्रत्यक्ष खर्च सारांश (EXPENSE SUMMARY)</th>
               </tr>
               <tr style="background-color: #f8fafc; font-size: 10px;">
                 <th style="width: 4%;">क्र.</th>
@@ -541,7 +608,7 @@ export default function AdminFinancePage() {
                 <th style="background-color: #cbd5e1; border: none;"></th>
                 <th style="width: 4%;">क्र.</th>
                 <th>विभाग / हेड</th>
-                <th style="width: 14%;">एकूण रक्कम (₹)</th>
+                <th style="width: 14%;">पेड रक्कम (₹)</th>
               </tr>
             </thead>
             <tbody>
@@ -552,8 +619,8 @@ export default function AdminFinancePage() {
                 <td colspan="2" style="text-align: right; padding: 8px;">एकूण जमा:</td>
                 <td style="text-align: right; color: #166534; font-size: 13px;">₹ ${totalIncome.toLocaleString('en-IN')}</td>
                 <td style="background-color: #cbd5e1; border: none;"></td>
-                <td colspan="2" style="text-align: right; padding: 8px;">एकूण खर्च:</td>
-                <td style="text-align: right; color: #991b1b; font-size: 13px;">₹ ${totalExpense.toLocaleString('en-IN')}</td>
+                <td colspan="2" style="text-align: right; padding: 8px;">एकूण प्रत्यक्ष खर्च:</td>
+                <td style="text-align: right; color: #991b1b; font-size: 13px;">₹ ${totalActualExpense.toLocaleString('en-IN')}</td>
               </tr>
             </tfoot>
           </table>
@@ -564,6 +631,13 @@ export default function AdminFinancePage() {
                 <td>शिल्लक रक्कम (Net Balance): <span style="font-size: 14px; color: ${netBalance >= 0 ? '#166534' : '#991b1b'};">₹ ${netBalance.toLocaleString('en-IN')}</span></td>
                 <td style="text-align: right;">एकूण नोंदी संख्या: ${incomeRecords.length + expenseRecords.length}</td>
               </tr>
+              ${totalPendingLiability > 0 ? `
+                <tr>
+                  <td colspan="2" style="padding-top: 5px; color: #dc2626;">
+                    📌 एकूण प्रलंबित देणी (Total Pending Liabilities): ₹ ${totalPendingLiability.toLocaleString('en-IN')}
+                  </td>
+                </tr>
+              ` : ''}
             </table>
 
             ${totalAdvanceGiven > 0 ? `
@@ -585,6 +659,8 @@ export default function AdminFinancePage() {
     printWin.document.close();
   };
 
+  const rememberedEventId = localStorage.getItem(LAST_EVENT_STORAGE_KEY) || 'aapla-dandiya';
+
   return (
     <div className="w-full px-3 sm:px-6 lg:px-8 py-3 space-y-3 font-sans pb-24">
       
@@ -602,7 +678,7 @@ export default function AdminFinancePage() {
           </p>
         </div>
 
-        {/* Buttons (केवळ SuperAdmin ला दिसतील) */}
+        {/* Buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {isSuperAdmin && (
             <>
@@ -649,7 +725,7 @@ export default function AdminFinancePage() {
         </div>
       </div>
 
-      {/* 2. Summary Cards */}
+      {/* 2. Summary Cards (५ वे देणे बाकी कार्ड समाविष्ट) */}
       <FinanceSummaryCards totals={totals} />
 
       {/* 3. Filters */}
@@ -680,12 +756,24 @@ export default function AdminFinancePage() {
           ))}
         </select>
 
+        {/* Payment Status Filter */}
+        <select
+          value={selectedPaymentStatus}
+          onChange={(e) => setSelectedPaymentStatus(e.target.value)}
+          className="h-8 px-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-bold outline-none cursor-pointer shrink-0"
+          title="पेमेंट स्थिती फिल्टर"
+        >
+          <option value="ALL">सर्व पेमेंट्स</option>
+          <option value="PAID">फक्त पूर्ण (PAID)</option>
+          <option value="PARTIAL">फक्त अर्धवट (PARTIAL)</option>
+          <option value="PENDING">फक्त बाकी (PENDING)</option>
+        </select>
+
         {/* Event Year Filter */}
         <select 
           value={selectedEventYear}
           onChange={(e) => setSelectedEventYear(e.target.value)}
           className="h-8 px-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 font-bold outline-none cursor-pointer shrink-0"
-          title="इव्हेंट वर्ष"
         >
           <option value="ALL">सर्व Event Years</option>
           {availableEventYears.map(yr => (
@@ -698,11 +786,10 @@ export default function AdminFinancePage() {
           value={selectedFinancialYear}
           onChange={(e) => setSelectedFinancialYear(e.target.value)}
           className="h-8 px-2.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 font-bold outline-none cursor-pointer shrink-0"
-          title="पेमेंट तारीख FY"
         >
           <option value="ALL">सर्व आर्थिक वर्षे (FY)</option>
           {availableFinancialYears.map(fy => (
-            <option key={fy} value={fy}>FY {fy} (१ एप्रिल - ३१ मार्च)</option>
+            <option key={fy} value={fy}>FY {fy}</option>
           ))}
         </select>
 
@@ -710,7 +797,7 @@ export default function AdminFinancePage() {
         <select 
           value={selectedStaff}
           onChange={(e) => setSelectedStaff(e.target.value)}
-          className="h-8 px-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-bold outline-none cursor-pointer shrink-0"
+          className="h-8 px-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-800 font-bold outline-none cursor-pointer shrink-0"
         >
           <option value="ALL">सर्व Staff</option>
           {safeUsers.map(u => (
@@ -753,7 +840,7 @@ export default function AdminFinancePage() {
                 <th className="p-3">तारीख व ID</th>
                 <th className="p-3">प्रकार / इव्हेंट</th>
                 <th className="p-3">तपशील व वर्गवारी</th>
-                <th className="p-3">प्रतिनिधी</th>
+                <th className="p-3">स्थिती</th>
                 <th className="p-3">पेमेंट मोड</th>
                 <th className="p-3">रक्कम (₹)</th>
                 <th className="p-3 text-right">कृती</th>
@@ -763,6 +850,10 @@ export default function AdminFinancePage() {
               {filteredRecords.length > 0 ? (
                 filteredRecords.map((r) => {
                   const canEdit = financeService.canEditRecord(r, currentUser);
+                  const pStatus = r.paymentStatus || r.status || 'PAID';
+                  const totalAmt = Number(r.amount) || 0;
+                  const paidAmt = r.paidAmount !== undefined ? Number(r.paidAmount) : (pStatus === 'PENDING' ? 0 : totalAmt);
+                  const pendingAmt = r.pendingAmount !== undefined ? Number(r.pendingAmount) : (pStatus === 'PENDING' ? totalAmt : 0);
 
                   return (
                     <tr key={r.id} className="hover:bg-gray-50/80 transition">
@@ -771,11 +862,6 @@ export default function AdminFinancePage() {
                         <span className="text-[9px] font-mono font-black text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded mt-0.5 inline-block">
                           {r.txnId || 'SMF-TXN'}
                         </span>
-                        {r.isImported && (
-                          <span className="ml-1 text-[8px] font-black bg-indigo-50 text-indigo-700 px-1 py-0.2 rounded border border-indigo-200">
-                            IMPORTED
-                          </span>
-                        )}
                       </td>
 
                       <td className="p-3">
@@ -793,31 +879,90 @@ export default function AdminFinancePage() {
                         </span>
                       </td>
 
+                     {/* तपशील व वर्गवारी (नोंद कोणाची आहे) */}
                       <td className="p-3">
-                        <span className="font-bold text-gray-900 block">{r.description}</span>
-                        <span className="text-[10px] text-gray-500 bg-gray-100 px-1 py-0.5 rounded mt-0.5 inline-block">{r.category}</span>
+                        <span className="font-bold text-gray-900 block leading-snug">
+                          {r.description || r.category}
+                        </span>
+
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-medium">
+                            {r.category || 'सर्वसाधारण'}
+                          </span>
+
+                          {/* नोंद कोणाची आहे (createdBy किंवा assignedUser) */}
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            • 👤 नोंद: {r.createdByUserName || r.assignedUserName || 'संस्था प्रतिनिधी'}
+                          </span>
+                        </div>
                       </td>
 
-                      <td className="p-3 whitespace-nowrap text-gray-700">
-                        <span className="font-bold">{r.assignedUserName}</span>
-                        {r.createdByUserName && r.createdByUserName !== r.assignedUserName && (
-                          <span className="text-[9px] text-gray-400 block">नोंद: {r.createdByUserName}</span>
+                      {/* Payment Status Column */}
+                      <td className="p-3 whitespace-nowrap">
+                        {pStatus === 'PAID' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            <CheckCircle2 className="w-3 h-3" /> पूर्ण पेड
+                          </span>
+                        ) : pStatus === 'PARTIAL' ? (
+                          <div>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full">
+                              <Clock className="w-3 h-3" /> अर्धवट
+                            </span>
+                            <span className="text-[9px] text-rose-600 block font-bold mt-0.5">
+                              बाकी: ₹{pendingAmt.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                            <AlertCircle className="w-3 h-3" /> देणे बाकी
+                          </span>
                         )}
                       </td>
 
+                      {/* पेमेंट मोड व खाली कोणाचा ॲडव्हान्स आहे ते नाव */}
                       <td className="p-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black inline-block ${
                           r.mode === 'FROM_ADVANCE' ? 'bg-amber-100 text-amber-900' :
                           r.mode === 'ONLINE' ? 'bg-sky-50 text-sky-800' : 'bg-emerald-50 text-emerald-800'
                         }`}>
-                          {r.mode === 'FROM_ADVANCE' ? 'ॲडव्हान्समधून' : r.mode === 'ONLINE' ? 'ऑनलाइन' : 'रोख'}
+                          {r.mode === 'FROM_ADVANCE' ? 'ॲडव्हान्स' : r.mode === 'ONLINE' ? 'ऑनलाइन' : 'रोख'}
                         </span>
+
+                        {/* मोडच्या खाली कोणाला ॲडव्हान्स दिला / कोणामार्फत आहे ते नाव */}
+                        {(r.mode === 'FROM_ADVANCE' || r.type === 'ADVANCE_GIVEN') && r.assignedUserName && (
+                          <span className="text-[9px] font-bold text-slate-500 block mt-0.5">
+                            ({r.assignedUserName})
+                          </span>
+                        )}
                       </td>
 
-                      <td className="p-3 whitespace-nowrap font-black">
-                        <span className={r.type === 'INCOME' ? 'text-emerald-600' : r.type === 'EXPENSE' ? 'text-rose-600' : 'text-amber-600'}>
-                          {r.type === 'INCOME' ? '+' : '-'} ₹ {Number(r.amount).toLocaleString('en-IN')}
-                        </span>
+                      {/* Smart Amount Column (देणे बाकी असताना - ₹ 0 ऐवजी खरी रक्कम दाखवणे) */}
+                      <td className="p-3 whitespace-nowrap">
+                        {pStatus === 'PENDING' ? (
+                          <div>
+                            <span className="text-sm font-black text-rose-600 block">
+                              ₹ {totalAmt.toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1 py-0.5 rounded inline-block">
+                              (पूर्ण देणे बाकी)
+                            </span>
+                          </div>
+                        ) : pStatus === 'PARTIAL' ? (
+                          <div>
+                            <span className="text-sm font-black text-amber-700 block">
+                              - ₹ {paidAmt.toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-[9px] text-rose-600 block font-bold">
+                              बाकी: ₹{pendingAmt.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="font-black text-sm">
+                            <span className={r.type === 'INCOME' ? 'text-emerald-600' : r.type === 'EXPENSE' ? 'text-rose-600' : 'text-amber-600'}>
+                              {r.type === 'INCOME' ? '+' : '-'} ₹ {paidAmt.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="p-3 text-right whitespace-nowrap">
@@ -868,15 +1013,21 @@ export default function AdminFinancePage() {
           {filteredRecords.length > 0 ? (
             filteredRecords.map((r) => {
               const canEdit = financeService.canEditRecord(r, currentUser);
+              const pStatus = r.paymentStatus || r.status || 'PAID';
+              const totalAmt = Number(r.amount) || 0;
+              const paidAmt = r.paidAmount !== undefined ? Number(r.paidAmount) : (pStatus === 'PENDING' ? 0 : totalAmt);
+              const pendingAmt = r.pendingAmount !== undefined ? Number(r.pendingAmount) : (pStatus === 'PENDING' ? totalAmt : 0);
 
               return (
                 <div key={r.id} className="p-3 flex items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                       r.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' :
+                      pStatus === 'PENDING' ? 'bg-rose-100 text-rose-700' :
                       r.type === 'EXPENSE' ? 'bg-rose-50 text-rose-600' : 'bg-amber-100 text-amber-700'
                     }`}>
                       {r.type === 'INCOME' ? <ArrowDown className="w-3.5 h-3.5 rotate-180" /> :
+                       pStatus === 'PENDING' ? <AlertCircle className="w-3.5 h-3.5" /> :
                        r.type === 'EXPENSE' ? <ArrowUp className="w-3.5 h-3.5" /> : <HandCoins className="w-3.5 h-3.5" />}
                     </div>
                     <div className="min-w-0">
@@ -886,21 +1037,38 @@ export default function AdminFinancePage() {
                           {r.txnId || 'SMF-TXN'}
                         </span>
                       </div>
-                      <p className="text-[10px] text-gray-500 truncate mt-0.5 flex items-center gap-1.5">
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
                         <span className="font-semibold text-gray-700">{normalizeEventName(r.eventName)}</span>
                         <span>•</span>
-                        <span>{r.assignedUserName}</span>
+                        <span>👤 {r.assignedUserName || r.createdByUserName || '-'}</span>
                         <span>•</span>
                         <span>{r.date}</span>
+                        {pStatus === 'PARTIAL' && (
+                          <span className="text-amber-700 font-bold bg-amber-50 px-1 rounded">बाकी: ₹{pendingAmt}</span>
+                        )}
+                        {pStatus === 'PENDING' && (
+                          <span className="text-rose-700 font-bold bg-rose-50 px-1 rounded">देणे बाकी</span>
+                        )}
                       </p>
+                      {r.type === 'ADVANCE_GIVEN' && r.assignedUserName && (
+                        <span className="text-[8px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1 rounded mt-0.5 inline-block">
+                          👉 ॲडव्हान्स: {r.assignedUserName}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <div className={`text-xs font-black ${
-                      r.type === 'INCOME' ? 'text-emerald-600' : r.type === 'EXPENSE' ? 'text-rose-600' : 'text-amber-600'
-                    }`}>
-                      {r.type === 'INCOME' ? '+' : '-'}₹{Number(r.amount).toLocaleString('en-IN')}
+                    <div className="text-xs font-black">
+                      {pStatus === 'PENDING' ? (
+                        <span className="text-rose-600">₹{totalAmt.toLocaleString('en-IN')} (बाकी)</span>
+                      ) : pStatus === 'PARTIAL' ? (
+                        <span className="text-amber-700">-₹{paidAmt.toLocaleString('en-IN')}</span>
+                      ) : (
+                        <span className={r.type === 'INCOME' ? 'text-emerald-600' : r.type === 'EXPENSE' ? 'text-rose-600' : 'text-amber-600'}>
+                          {r.type === 'INCOME' ? '+' : '-'}₹{paidAmt.toLocaleString('en-IN')}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center justify-end gap-1.5 mt-1">
                       <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-gray-100 text-gray-700">
@@ -976,8 +1144,9 @@ export default function AdminFinancePage() {
         <FinanceTransactionModal 
           onClose={() => { setShowModal(false); setEditingRecord(null); }}
           onSave={handleSaveRecord}
-          existingCategories={defaultCategories}
+          existingCategories={categories}
           existingEvents={INITIATIVES_DATA}
+          defaultEventId={rememberedEventId}
           usersList={safeUsers}
           currentUser={currentUser}
           initialData={editingRecord}

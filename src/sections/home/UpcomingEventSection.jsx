@@ -64,7 +64,7 @@ export default function UpcomingEventSection({ lang }) {
               </span>
               <div className="grid grid-cols-2 gap-3 max-w-md">
                 <div className="bg-gradient-to-br from-amber-600 to-amber-700 text-white rounded-2xl p-3 text-center shadow-lg border border-white/20">
-                  <div className="text-2xl sm:text-3xl font-black">१४</div>
+                  <div className="text-2xl sm:text-3xl font-black">२२</div>
                   <div className="text-xs font-bold tracking-wide">नोव्हेंबर २०२६</div>
                 </div>
                 <div className="bg-gradient-to-br from-[#2a0815] to-[#420d22] text-amber-200 rounded-2xl p-3 text-center shadow-lg border border-amber-500/30 flex flex-col justify-center items-center">

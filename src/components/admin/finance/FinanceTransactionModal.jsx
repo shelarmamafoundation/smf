@@ -1,5 +1,6 @@
+// src/components/admin/finance/FinanceTransactionModal.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Search, UserPlus, Check, UserCheck } from 'lucide-react';
+import { X, Loader2, Search, UserPlus, Check, UserCheck, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { financeService } from '../../../services/financeService';
 
@@ -8,9 +9,10 @@ export default function FinanceTransactionModal({
   onSave, 
   existingCategories = [], 
   existingEvents = [],
+  defaultEventId = 'general',
   usersList = [],
   currentUser = null,
-  initialData = null // एडिट करण्यासाठीचा जुना डेटा
+  initialData = null
 }) {
   const users = Array.isArray(usersList) ? usersList : [];
   const isAdminOrSuper = !currentUser?.role || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
@@ -19,20 +21,26 @@ export default function FinanceTransactionModal({
 
   // फॉर्म स्टेट्स
   const [type, setType] = useState('EXPENSE');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState('');                 // एकूण बिलाची रक्कम
+  const [paidAmount, setPaidAmount] = useState('');         // प्रत्यक्ष दिलेली रक्कम
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [eventYear, setEventYear] = useState(currentYearStr);
 
-  const [eventId, setEventId] = useState(existingEvents[0]?.id || 'general');
+  // आधी वापरलेला इव्हेंट आपोआप निवडणे (Default Event Memory)
+  const initialEventChoice = defaultEventId && (existingEvents.some(e => e.id === defaultEventId) || defaultEventId === 'general')
+    ? defaultEventId
+    : (existingEvents[0]?.id || 'general');
+
+  const [eventId, setEventId] = useState(initialEventChoice);
   const [isCustomEvent, setIsCustomEvent] = useState(false);
   const [customEventName, setCustomEventName] = useState('');
 
-  const [category, setCategory] = useState(existingCategories[0] || 'मंडप व डेकोरेशन');
+  const [category, setCategory] = useState(existingCategories[0] || 'मंडप आणि लाइटिंग');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategoryName, setCustomCategoryName] = useState('');
 
   const [mode, setMode] = useState('CASH');
-  const [status, setStatus] = useState('PAID');
+  const [paymentStatus, setPaymentStatus] = useState('PAID'); // 'PAID' | 'PARTIAL' | 'PENDING'
 
   const [userSearchText, setUserSearchText] = useState(currentUser?.name || '');
   const [selectedUserObj, setSelectedUserObj] = useState(currentUser || (users.length > 0 ? users[0] : null));
@@ -46,19 +54,18 @@ export default function FinanceTransactionModal({
   const [submitting, setSubmitting] = useState(false);
 
   // =========================================================
-  // एडिट करताना जुना डेटा आपोआप Pre-fill करणे
+  // एडिट करताना जुना डेटा Pre-fill करणे
   // =========================================================
   useEffect(() => {
     if (initialData) {
       setType(initialData.type || 'EXPENSE');
       setAmount(initialData.amount ? String(initialData.amount) : '');
+      setPaidAmount(initialData.paidAmount !== undefined ? String(initialData.paidAmount) : (initialData.amount ? String(initialData.amount) : ''));
       setDate(initialData.date || new Date().toISOString().split('T')[0]);
       
-      // इव्हेंट वर्ष Pre-fill (नसल्यास पेमेंट तारखेवरून किंवा चालू वर्ष)
       const detectedYear = initialData.eventYear || (initialData.date ? new Date(initialData.date).getFullYear().toString() : currentYearStr);
       setEventYear(detectedYear);
 
-      // Event Pre-fill
       const isPredefinedEvent = existingEvents.some(ev => ev.id === initialData.eventId);
       if (isPredefinedEvent || initialData.eventId === 'general') {
         setEventId(initialData.eventId || 'general');
@@ -68,7 +75,6 @@ export default function FinanceTransactionModal({
         setCustomEventName(initialData.eventName || '');
       }
 
-      // Category Pre-fill
       const isPredefinedCat = existingCategories.includes(initialData.category);
       if (isPredefinedCat) {
         setCategory(initialData.category);
@@ -79,9 +85,8 @@ export default function FinanceTransactionModal({
       }
 
       setMode(initialData.mode || 'CASH');
-      setStatus(initialData.status || 'PAID');
+      setPaymentStatus(initialData.paymentStatus || initialData.status || 'PAID');
 
-      // User Pre-fill
       setUserSearchText(initialData.assignedUserName || '');
       const matchedUser = users.find(u => u.id === initialData.assignedUserId);
       if (matchedUser) {
@@ -99,6 +104,16 @@ export default function FinanceTransactionModal({
       setNotes(initialData.notes || '');
     }
   }, [initialData]);
+
+  // एकूण रकमेतून शिल्लक देणी (Pending Amount) मोजणे
+  const numericTotalAmt = Number(amount) || 0;
+  const numericPaidAmt = paymentStatus === 'PAID' 
+    ? numericTotalAmt 
+    : paymentStatus === 'PENDING' 
+    ? 0 
+    : (Number(paidAmount) || 0);
+
+  const pendingBalance = Math.max(0, numericTotalAmt - numericPaidAmt);
 
   const matchingUsers = users.filter(u => 
     (u.name || '').toLowerCase().includes(userSearchText.toLowerCase()) ||
@@ -151,12 +166,21 @@ export default function FinanceTransactionModal({
 
     if (submitting) return;
 
-    const numAmt = Number(amount);
-    if (!amount || isNaN(numAmt) || numAmt <= 0) {
+    if (!amount || numericTotalAmt <= 0) {
       Swal.fire({
         icon: 'warning',
         title: 'अवैध रक्कम!',
         text: 'कृपया ० पेक्षा जास्त योग्य रक्कम भरा.',
+        confirmButtonColor: '#580A1A'
+      });
+      return;
+    }
+
+    if (paymentStatus === 'PARTIAL' && numericPaidAmt >= numericTotalAmt) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'रक्कम तपासा!',
+        text: 'अर्धवट पेमेंटमध्ये दिलेली रक्कम एकूण बिलापेक्षा कमी असावी. पूर्ण दिली असल्यास "पूर्ण पेड" निवडा.',
         confirmButtonColor: '#580A1A'
       });
       return;
@@ -180,14 +204,17 @@ export default function FinanceTransactionModal({
       await onSave({
         txnId,
         type,
-        amount: numAmt,
+        amount: numericTotalAmt,
+        paidAmount: numericPaidAmt,
+        pendingAmount: pendingBalance,
+        paymentStatus,
+        status: paymentStatus,
         date,
         eventYear: String(eventYear).trim() || currentYearStr,
         eventId: finalEventId,
         eventName: finalEventName,
-        category: finalCategory || 'इतर',
+        category: finalCategory || 'इतर विविध खर्च',
         mode: (type === 'EXPENSE' && mode === 'FROM_ADVANCE') ? 'FROM_ADVANCE' : mode,
-        status,
         
         assignedUserId: selectedUserObj?.id || null,
         assignedUserName: selectedUserObj?.name || userSearchText.trim() || 'संस्था थेट (General)',
@@ -210,7 +237,6 @@ export default function FinanceTransactionModal({
     }
   };
 
-  // मागील ५ वर्षे आणि पुढील २ वर्षे जनरेट करणे
   const numericCurrentYear = Number(currentYearStr);
   const yearOptions = [];
   for (let y = numericCurrentYear + 1; y >= numericCurrentYear - 4; y--) {
@@ -280,12 +306,14 @@ export default function FinanceTransactionModal({
           {/* Amount, Payment Date & Event Year */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">रक्कम (₹)*</label>
+              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">
+                {paymentStatus === 'PARTIAL' ? 'एकूण बिलाची रक्कम (₹)*' : 'रक्कम (₹)*'}
+              </label>
               <input 
                 type="number"
                 required
                 min="1"
-                placeholder="उदा. ५०००"
+                placeholder="उदा. २००००"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="w-full h-9 px-3 rounded-xl border border-gray-300 text-sm font-black focus:border-heritage-burgundy outline-none bg-white"
@@ -318,7 +346,88 @@ export default function FinanceTransactionModal({
             </div>
           </div>
 
-          {/* Event Selection */}
+          {/* Payment Status & Part-Payment Controls */}
+          {type !== 'INCOME' && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <span>पेमेंट स्थिती व देणी (Payment Status)*</span>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setPaymentStatus('PAID'); setPaidAmount(amount); }}
+                  className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                    paymentStatus === 'PAID' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white border text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>पूर्ण दिले</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentStatus('PARTIAL')}
+                  className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                    paymentStatus === 'PARTIAL' ? 'bg-amber-600 text-white shadow-xs' : 'bg-white border text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>अर्धवट (Part)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setPaymentStatus('PENDING'); setPaidAmount('0'); }}
+                  className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                    paymentStatus === 'PENDING' ? 'bg-rose-600 text-white shadow-xs' : 'bg-white border text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>देणे बाकी</span>
+                </button>
+              </div>
+
+              {/* पार्ट पेमेंट इनपुट */}
+              {paymentStatus === 'PARTIAL' && (
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200 mt-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-800 uppercase mb-0.5">
+                      आता दिलेली रक्कम (Paid)*
+                    </label>
+                    <input 
+                      type="number"
+                      required
+                      min="1"
+                      max={numericTotalAmt - 1}
+                      placeholder="उदा. १५०००"
+                      value={paidAmount}
+                      onChange={(e) => setPaidAmount(e.target.value)}
+                      className="w-full h-8 px-2.5 rounded-lg border border-emerald-300 text-xs font-black bg-white outline-none focus:border-emerald-600"
+                    />
+                  </div>
+
+                  <div className="flex flex-col justify-end">
+                    <span className="text-[10px] font-bold text-rose-800 uppercase mb-0.5">देणी बाकी (Pending)</span>
+                    <div className="h-8 px-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-black flex items-center">
+                      ₹ {pendingBalance.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentStatus === 'PENDING' && (
+                <p className="text-[10px] text-amber-800 font-medium bg-amber-50/80 p-2 rounded-lg border border-amber-200">
+                  ⚠️ ही रक्कम चालू शिलकीतून वजा होणार नाही, तर भविष्यातील <strong>देणी दायित्व (Pending Liabilities)</strong> म्हणून ट्रॅक केली जाईल.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Event Selection with Last-Used Auto Select */}
           <div>
             <div className="flex items-center justify-between mb-0.5">
               <label className="text-[10px] font-bold text-gray-600 uppercase">संबंधित उपक्रम / इव्हेंट*</label>
@@ -387,34 +496,20 @@ export default function FinanceTransactionModal({
             )}
           </div>
 
-          {/* Mode & Status */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">पेमेंट मोड*</label>
-              <select 
-                value={mode}
-                onChange={(e) => setMode(e.target.value)}
-                className="w-full h-9 px-2 rounded-xl border border-gray-300 font-bold focus:border-heritage-burgundy outline-none bg-white cursor-pointer"
-              >
-                <option value="CASH">रोख (Cash)</option>
-                <option value="ONLINE">ऑनलाइन / UPI / बँक</option>
-                {type === 'EXPENSE' && (
-                  <option value="FROM_ADVANCE">ॲडव्हान्समधून (From Advance)</option>
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">स्थिती (Status)*</label>
-              <select 
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full h-9 px-2 rounded-xl border border-gray-300 font-bold focus:border-heritage-burgundy outline-none bg-white cursor-pointer"
-              >
-                <option value="PAID">पूर्ण पेड (Paid)</option>
-                <option value="PENDING">प्रलंबित (Pending / देणे बाकी)</option>
-              </select>
-            </div>
+          {/* Mode */}
+          <div>
+            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">पेमेंट मोड*</label>
+            <select 
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              className="w-full h-9 px-2 rounded-xl border border-gray-300 font-bold focus:border-heritage-burgundy outline-none bg-white cursor-pointer"
+            >
+              <option value="CASH">रोख (Cash)</option>
+              <option value="ONLINE">ऑनलाइन / UPI / बँक</option>
+              {type === 'EXPENSE' && (
+                <option value="FROM_ADVANCE">ॲडव्हान्समधून (From Advance)</option>
+              )}
+            </select>
           </div>
 
           {/* Searchable User / Quick Add Component */}

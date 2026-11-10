@@ -273,7 +273,7 @@ export default function SaapshidiRegistration() {
           
           {/* Tarikh aani Time Pills */}
           <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-amber-300 bg-black/50 border border-amber-500/30 px-3.5 py-2.5 rounded-2xl mb-3.5">
-            <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-amber-400" /> १४ नोव्हेंबर २०२६</span>
+            <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-amber-400" /> २२ नोव्हेंबर २०२६</span>
             <span className="text-stone-500">•</span>
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-amber-400" /> सायं. ६:०० वा.</span>
           </div>

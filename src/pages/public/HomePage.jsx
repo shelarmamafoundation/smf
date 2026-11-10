@@ -1,3 +1,4 @@
+//src\pages\public\HomePage.jsx
 import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import HeroSection from '../../sections/home/HeroSection';

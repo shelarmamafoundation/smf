@@ -26,8 +26,8 @@ export default function FormControllerCard({ isSuperAdmin }) {
       const { value: inputDate } = await Swal.fire({
         title: 'नोंदणी कधी सुरू होणार?',
         input: 'text',
-        inputValue: startDate || '१५ नोव्हेंबर २०२६, सायं. ६:०० वा.',
-        inputPlaceholder: 'उदा. १५ नोव्हेंबर २०२६, सायं. ६:०० वा.',
+        inputValue: startDate || '१४ नोव्हेंबर २०२६, सायं. ६:०० वा.',
+        inputPlaceholder: 'उदा. १४ नोव्हेंबर २०२६, सायं. ६:०० वा.',
         showCancelButton: true,
         confirmButtonText: 'तारीख सेव्ह करा',
         cancelButtonText: 'रद्द करा',

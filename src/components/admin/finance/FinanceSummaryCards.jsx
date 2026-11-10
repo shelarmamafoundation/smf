@@ -2,13 +2,14 @@
 import React from 'react';
 import { 
   TrendingUp, TrendingDown, HandCoins, Wallet, 
-  Banknote, Landmark, Sparkles, ShieldCheck 
+  Sparkles, ShieldCheck, ClockAlert 
 } from 'lucide-react';
 
 export default function FinanceSummaryCards({ totals }) {
   const safeTotals = {
     totalIncome: totals?.totalIncome || 0,
     totalExpense: totals?.totalExpense || 0,
+    totalPendingPayable: totals?.totalPendingPayable || 0,
     totalAdvanceGiven: totals?.totalAdvanceGiven || 0,
     advanceSpent: totals?.advanceSpent || 0,
     remainingAdvanceInMarket: totals?.remainingAdvanceInMarket || 0,
@@ -47,7 +48,7 @@ export default function FinanceSummaryCards({ totals }) {
           </div>
 
           {/* Center: Net Balance */}
-          <div className="py-2.5 text-center">
+          <div className="py-2 text-center">
             <span className="text-[9px] uppercase font-bold text-gray-300 tracking-wider">
               संस्था निव्वळ शिल्लक निधी (NET BALANCE)
             </span>
@@ -58,26 +59,33 @@ export default function FinanceSummaryCards({ totals }) {
             </div>
           </div>
 
-          {/* 3 Columns: जमा | खर्च | ॲडव्हान्स */}
-          <div className="grid grid-cols-3 gap-1.5 py-2 px-2 rounded-xl bg-white/[0.06] border border-white/10 text-center">
-            <div className="border-r border-white/10 pr-1">
-              <span className="text-[9px] font-bold text-emerald-400 uppercase block">जमा</span>
-              <div className="text-xs font-black text-white mt-0.5 truncate">
-                ₹ {safeTotals.totalIncome.toLocaleString('en-IN')}
+          {/* 4 Columns: जमा | प्रत्यक्ष खर्च | देणे बाकी | ॲडव्हान्स */}
+          <div className="grid grid-cols-4 gap-1 py-2 px-1.5 rounded-xl bg-white/[0.06] border border-white/10 text-center">
+            <div className="border-r border-white/10 pr-0.5">
+              <span className="text-[8px] font-bold text-emerald-400 uppercase block">जमा</span>
+              <div className="text-[11px] font-black text-white mt-0.5 truncate">
+                ₹{safeTotals.totalIncome.toLocaleString('en-IN')}
               </div>
             </div>
 
-            <div className="border-r border-white/10 px-1">
-              <span className="text-[9px] font-bold text-rose-400 uppercase block">खर्च</span>
-              <div className="text-xs font-black text-white mt-0.5 truncate">
-                ₹ {safeTotals.totalExpense.toLocaleString('en-IN')}
+            <div className="border-r border-white/10 px-0.5">
+              <span className="text-[8px] font-bold text-rose-300 uppercase block">खर्च</span>
+              <div className="text-[11px] font-black text-white mt-0.5 truncate">
+                ₹{safeTotals.totalExpense.toLocaleString('en-IN')}
               </div>
             </div>
 
-            <div className="pl-1">
-              <span className="text-[9px] font-bold text-amber-300 uppercase block">ॲडव्हान्स</span>
-              <div className="text-xs font-black text-amber-300 mt-0.5 truncate">
-                ₹ {safeTotals.remainingAdvanceInMarket.toLocaleString('en-IN')}
+            <div className="border-r border-white/10 px-0.5">
+              <span className="text-[8px] font-bold text-rose-400 uppercase block">देणे बाकी</span>
+              <div className="text-[11px] font-black text-rose-300 mt-0.5 truncate">
+                ₹{safeTotals.totalPendingPayable.toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            <div className="pl-0.5">
+              <span className="text-[8px] font-bold text-amber-300 uppercase block">ॲडव्हान्स</span>
+              <div className="text-[11px] font-black text-amber-300 mt-0.5 truncate">
+                ₹{safeTotals.remainingAdvanceInMarket.toLocaleString('en-IN')}
               </div>
             </div>
           </div>
@@ -92,9 +100,9 @@ export default function FinanceSummaryCards({ totals }) {
       </div>
 
       {/* ======================================================== */}
-      {/* 2. DESKTOP ONLY VIEW: 4 Fluid Elegant KPI Cards          */}
+      {/* 2. DESKTOP ONLY VIEW: 5 Fluid Elegant KPI Cards          */}
       {/* ======================================================== */}
-      <div className="hidden lg:grid grid-cols-4 gap-4">
+      <div className="hidden lg:grid grid-cols-5 gap-3.5">
         
         {/* Card 1: Net Balance */}
         <div className="rounded-2xl p-4 bg-gradient-to-br from-[#1C060D] via-[#2F0913] to-[#120206] text-white border border-heritage-gold/30 shadow-sm flex flex-col justify-between">
@@ -125,7 +133,7 @@ export default function FinanceSummaryCards({ totals }) {
           </span>
         </div>
 
-        {/* Card 3: Expense */}
+        {/* Card 3: Expense (Actual Paid) */}
         <div className="rounded-2xl p-4 bg-white border border-gray-200 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs font-bold text-rose-700">
             <span>एकूण प्रत्यक्ष खर्च</span>
@@ -135,11 +143,25 @@ export default function FinanceSummaryCards({ totals }) {
             ₹ {safeTotals.totalExpense.toLocaleString('en-IN')}
           </div>
           <span className="text-[11px] text-gray-400 mt-2 block">
-            इव्हेंट्स व व्यवस्थापन
+            प्रत्यक्ष खात्यातून दिलेला खर्च
           </span>
         </div>
 
-        {/* Card 4: Advance with team */}
+        {/* Card 4: देणे बाकी (Pending Liabilities) */}
+        <div className="rounded-2xl p-4 bg-rose-50/60 border border-rose-200/80 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-xs font-bold text-rose-900">
+            <span>एकूण देणे बाकी</span>
+            <ClockAlert className="w-4 h-4 text-rose-600" />
+          </div>
+          <div className="text-2xl font-black text-rose-700 mt-2">
+            ₹ {safeTotals.totalPendingPayable.toLocaleString('en-IN')}
+          </div>
+          <span className="text-[11px] text-rose-600 font-semibold mt-2 block">
+            उधारी व प्रलंबित देणी
+          </span>
+        </div>
+
+        {/* Card 5: Advance with team */}
         <div className="rounded-2xl p-4 bg-white border border-gray-200 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs font-bold text-amber-700">
             <span>शिल्लक ॲडव्हान्स</span>
